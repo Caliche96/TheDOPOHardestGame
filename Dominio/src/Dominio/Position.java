@@ -1,34 +1,35 @@
 package Dominio;
 
 public class Position {
-    private int x;
-    private int y;
+    private int row;
+    private int column;
 
-    public Position(int x, int y) {
-        this.x = x;
-        this.y = y;
+    public Position(int row, int column) {
+        this.row = row;
+        this.column = column;
     }
 
-    public int getX() { return x; }
-    public int getY() { return y; }
-
-    public void setX(int x) { this.x = x; }
-    public void setY(int y) { this.y = y; }
-
-    public Position copy() {
-        return new Position(this.x, this.y);
+    public int getRow() { 
+    	return row; 
+    }
+    
+    public int getColumn() { 
+    	return column; 
     }
 
+    
     @Override
     public boolean equals(Object obj) {
-        if (this == obj) return true;
-        if (!(obj instanceof Position)) return false;
+        if (this == obj) {
+        	return true;
+        }
+        
+        if (obj==null) {
+        	return false;
+        }
+        
         Position other = (Position) obj;
-        return this.x == other.x && this.y == other.y;
+        return row == other.row && column == other.column;
     }
 
-    @Override
-    public String toString() {
-        return "(" + x + ", " + y + ")";
-    }
 }

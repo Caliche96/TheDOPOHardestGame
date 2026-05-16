@@ -1,82 +1,217 @@
 package Dominio;
 
+import java.util.*;
+
 public class Game {
-    private int deaths;
-    private boolean finished;
-    private Player player;
-    private Level currentLevel;
-
-    public Game() {
-        this.deaths = 0;
-        this.finished = false;
+	
+	//Atributos de la clase controladora del dominio
+	private Level currentLevel;
+	private List<Player> players;
+	
+	
+	private GameMode gameMode;
+	private GameState state;
+	private int remainingTime;
+	//Métodos de la clase Controladora
+	
+	/**
+	 * Constructor
+	 */
+    public Game(Level level, GameMode mode) {
+        this.currentLevel=level;
+        this.gameMode=mode;
+        this.players= new ArrayList<>();
+        this.state = new RunningState();
+        this.remainingTime= level.getTimeLimit();
     }
-
-    public void startLevel(Level level) {
-        this.currentLevel = level;
-        this.player = new Player(level.getStartPosition(), 1);
-        this.finished = false;
-    }
-
-    public void resetLevel() {
-        if (currentLevel != null) {
-            player.reset();
-            // Reset all coins
-            for (Coin coin : currentLevel.getCoins()) {
-                // Re-instantiate or mark as not collected via reset method
-            }
-        }
-    }
-
-    public void movePlayer(Direction direction) {
-        if (finished || currentLevel == null) return;
-
-        Position current = player.getPosition().copy();
-        player.move(direction);
-
-        // Undo move if new position is a wall or outside board
-        Board board = currentLevel.getBoard();
-        if (board.isWall(player.getPosition())) {
-            player.getPosition().setX(current.getX());
-            player.getPosition().setY(current.getY());
-        }
-    }
+    
+    //Metodos Principales
 
     public void update() {
-        if (finished || currentLevel == null) return;
-
-        // Update all enemies
-        for (Enemy enemy : currentLevel.getEnemies()) {
-            enemy.update();
-        }
-
-        // Check enemy collision -> death
-        for (Enemy enemy : currentLevel.getEnemies()) {
-            if (enemy.collidesWith(player)) {
-                deaths++;
-                resetLevel();
-                return;
-            }
-        }
-
-        // Check coin collection
-        for (Coin coin : currentLevel.getCoins()) {
-            if (coin.collidesWith(player)) {
-                coin.collect();
-            }
-        }
-
-        // Check if player reached goal with all coins collected
-        if (currentLevel.allCoinsCollected()
-                && currentLevel.getGoal().isReachedBy(player)) {
-            finished = true;
-        }
+    	state.update(this);
+    }
+    
+    public void movePlayer(int playerIndex, Direction direccion) {
+    	state.movePlayer(this, playerIndex, direccion);
+    }
+    
+    public void pause() {
+    	state.pause(this);
     }
 
-    public boolean isFinished() { return finished; }
+    public void resume() {
+    	state.resume(this);
+    }
+    
+    public void finishGame() {
+    	state.finish(this);
+    }
+    
+    //-----------METODOS INTERNOS-------
 
-    public int getDeaths() { return deaths; }
+    public void internalMovePlayer(int playerIndex, Direction direccion) {
+    	if (playerIndex <0 || playerIndex >= players.size()) {
+    		return;
+    	}
+    	
+    	Player player = players.get(playerIndex);
+    	Position nextPosition= player.calculateNextPosition(direccion);
+    	
+    	if(!currentLevel.getBoard().isWall(nextPosition)) {
+    		player.move(direccion);
+    		checkSafeZone(player);
+    	}
+    }
+    
+    //Parte de Enemigos
 
-    public Player getPlayer() { return player; }
+    public void moveEnemies() {
+    	for (Enemy enemy: currentLevel.getEnemies()) {
+    		enemy.update();
+    	}
+    }
+    
+    
+    //Colisiones
+    public void checkEnemyCollsion() {
+		for (Player player : players) {
+			for(Enemy enemy : currentLevel.getEnemies()) {
+				if (enemy.collides(player)) {
+					player.receiveHit();
+				}
+			}
+		}
+		
+	}
+    
+    
+	public void checkCoinCollision() {
+		for (Player player : players) {
+			for (Coin coin : currentLevel.getCoins()) {
+				if (!coin.isCollected() && coin.collides(player)) {
+					coin.collect();
+					coin.applyEffect(player);
+					player.addCoin();
+				}
+			}
+		}
+	}
 
-    public Level getCurrentLevel() { return currentLevel; }
+	//Verificar la utilidad de este método
+	public void checkSpecialElements() {
+		for (SpecialElement element : currentLevel.getSpecialElements()) {
+			for (Player player : players) {
+				if (element.collides(player)) {
+					element.applyEffect(this, player);
+				}
+			}
+		}
+	}
+	
+	//Colision entre jugadores
+	public void checkPlayerCollisions() {
+		if (gameMode== GameMode.SINGLE_PLAYER) {
+			return;
+		}
+		
+		for (int i=0; i<players.size(); i++) {
+			for (int j =i+1; j<players.size(); j++) {
+				Player p1= players.get(i);
+				Player p2= players.get(j);
+				
+				if(p1.collides(p2)) {
+					p1.die();
+					p2.die();
+				}
+			}
+		}
+	}
+	
+	//Zonas Seguras
+	public void checkSafeZone(Player player) {
+		Cell currentCell = currentLevel.getBoard().getCell(player.getPosition().getRow(), player.getPosition().getColumn());
+		
+		if(currentCell.getType()==CellType.SAFE_ZONE) {
+			player.setSpawnPoint(player.getPosition());
+		}
+	}
+
+	//Victoria
+	public void checkGoal() {
+		if(!currentLevel.allCoinsCollected()) {
+			return;
+		}
+		
+		boolean allPlayersFinished = true;
+		
+		for (Player player : players) {
+			Cell currentCell = currentLevel.getBoard().getCell(player.getPosition().getRow(), player.getPosition().getColumn());
+			
+			if(currentCell.getType()!=CellType.GOAL) {
+				allPlayersFinished= false;
+			}
+		}
+		
+		if(allPlayersFinished) {
+			finishGame();
+		}
+			
+	}
+	
+	//Tiempo
+
+	public void updateTimer() {
+		remainingTime --;
+		if (remainingTime <=0) {
+			finishGame();
+			
+		}
+	}
+		
+
+	
+	//Persistencia
+	
+	public void saveGame() {
+		//Falta aún implementar toda esta parte
+	}
+	
+	public void loadGame() {
+		//Falta aún implementar toda esta parte
+	}
+	
+	
+	//Manejo de los jugadores
+	
+	public void addPlayer(Player player) {
+		players.add(player);
+	}
+	
+	
+	//CAMBIOS DE ESTADO
+	public void setState(GameState state) {
+		this.state=state;
+	}
+	
+	//GETTERS
+	public Level getCurrentLevel() {
+		return currentLevel;
+	}
+	
+	public List<Player> getPlayers(){
+		return players;
+	}
+	
+	public GameState getGameState() {
+		return state;
+	}
+
+	public int getRemainingTime() {
+		return remainingTime;
+	}
+	
+	public GameMode getGameMode() {
+		return gameMode;
+	}
+	
 }

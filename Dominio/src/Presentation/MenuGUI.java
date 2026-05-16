@@ -31,6 +31,9 @@ public class MenuGUI extends JFrame {
      *  CREAR ELEMENTOS GRÁFICOS
      */
     private void prepareElements() {
+    	
+    	//Mensaje en la parte de Arriba de Elegir la modalidad
+    	
 
         // BOTÓN PLAY
         btnPlay = new JButton("PLAYER");

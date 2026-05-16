@@ -10,22 +10,34 @@ public class Cell {
     }
 
     public boolean isWalkable() {
-        return type == CellType.WALKABLE || type == CellType.START || type == CellType.GOAL;
+        return type != CellType.WALL;
     }
 
     public boolean isWall() {
         return type == CellType.WALL;
     }
-
-    public boolean isStart() {
-        return type == CellType.START;
-    }
-
     public boolean isGoal() {
         return type == CellType.GOAL;
     }
+    public boolean isSafeZone() {
+    	return type== CellType.SAFE_ZONE;
+    }
+    public boolean isSpawnZone() {
+    	return type== CellType.SPAWN_ZONE;
+    }
 
-    public Position getPosition() { return position; }
-    public CellType getType() { return type; }
-    public void setType(CellType type) { this.type = type; }
+    //Getters
+    public Position getPosition() { 
+    	return position; 
+    }
+    
+    public CellType getType() { 
+    	return type; 
+    }
+    
+    //Setters
+    
+    public void setType(CellType type) { 
+    	this.type = type; 
+    }
 }

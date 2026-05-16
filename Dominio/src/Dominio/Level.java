@@ -1,37 +1,88 @@
 package Dominio;
 
-import java.util.List;
+import java.util.*;
 
 public class Level {
-    private Board board;
-    private Position startPosition;
-    private Goal goal;
+	//Atributos
+    private GameBoard board;
     private List<Enemy> enemies;
     private List<Coin> coins;
+    private List<SpecialElement> specialElements;
+    private int timeLimit;
+    private String levelName;
 
-    public Level(Board board, Position startPosition, Goal goal,
-                 List<Enemy> enemies, List<Coin> coins) {
-        this.board = board;
-        this.startPosition = startPosition;
-        this.goal = goal;
-        this.enemies = enemies;
-        this.coins = coins;
+    public Level(String levelName,GameBoard board, int timeLimit ) {
+    	this.levelName=levelName;
+    	this.board=board;
+    	this.timeLimit=timeLimit;
+    	this.enemies= new ArrayList<>();
+    	this.coins= new ArrayList<>();
+    	this.specialElements= new ArrayList<>();
     }
 
-    public Board getBoard() { return board; }
-
-    public Position getStartPosition() { return startPosition; }
-
-    public Goal getGoal() { return goal; }
-
-    public List<Enemy> getEnemies() { return enemies; }
-
-    public List<Coin> getCoins() { return coins; }
-
+    //Enemigos
+    
+    public void addEnemy(Enemy enemy) {
+    	enemies.add(enemy);
+    }
+    
+    public void removeEnemy(Enemy enemy) {
+    	enemies.remove(enemy);
+    }
+    
+    //Monedas
+    public void addCoin(Coin coin) {
+    	coins.add(coin);
+    }
+    
+    public void removeCoin(Coin coin) {
+    	coins.remove(coin);
+    }
+    
+    //Elementos Especiales
+    public void addSpecialElement(SpecialElement element) {
+    	specialElements.add(element);
+    }
+    
+    public void removeSpecialElement(SpecialElement element) {
+    	specialElements.remove(element);
+    }
+    
+    //Validaciones
     public boolean allCoinsCollected() {
-        for (Coin coin : coins) {
-            if (!coin.isCollected()) return false;
-        }
-        return true;
+    	for (Coin coin: coins) {
+    		if (!coin.isCollected()) {
+    			return false;
+    		}
+    	}
+    	return true;
     }
+    
+    //Getters
+    public GameBoard getBoard() { 
+    	return board; 
+    }
+
+    public List<Enemy> getEnemies() { 
+    	return enemies; 
+    }
+
+    public List<Coin> getCoins() { 
+    	return coins; 
+    }
+    
+    public List<SpecialElement> getSpecialElements(){
+    	return specialElements;
+    }
+
+    public int getTimeLimit() {
+    	return timeLimit;
+    }
+    
+    public String getLevelName() {
+    	return levelName;
+    }
+    
+    
+    
 }
