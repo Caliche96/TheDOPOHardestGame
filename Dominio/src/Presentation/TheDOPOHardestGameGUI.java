@@ -72,7 +72,7 @@ public class TheDOPOHardestGameGUI extends JFrame {
      * Método para cambiar a la siguiente interfaz.
      */
     private void abrirMenuGUI() {
-        new MenuGUI(); 
+        new ModeSelectionPanel(); 
         dispose();
     }
 

@@ -10,6 +10,7 @@ public class Level {
     private List<SpecialElement> specialElements;
     private int timeLimit;
     private String levelName;
+    private Position defaultSpawn;
 
     public Level(String levelName,GameBoard board, int timeLimit ) {
     	this.levelName=levelName;
@@ -81,6 +82,14 @@ public class Level {
     
     public String getLevelName() {
     	return levelName;
+    }
+
+    public Position getDefaultSpawn() {
+        return defaultSpawn;
+    }
+
+    public void setDefaultSpawn(Position spawn) {
+        this.defaultSpawn = spawn;
     }
     
     
