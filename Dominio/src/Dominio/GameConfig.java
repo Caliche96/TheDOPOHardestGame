@@ -15,7 +15,7 @@ public class GameConfig {
     public static final int HUD_HEIGHT    = 50;
 
     // ── Tiempo por defecto (segundos × 30 FPS) ──
-    public static final int DEFAULT_TIME_LIMIT = 30; // 30 monedas como en la imagen
+    public static final int DEFAULT_TIME_LIMIT = 180; // 30 monedas como en la imagen
 
     // ── FPS del GameLoop ──
     public static final int FPS = 30;
