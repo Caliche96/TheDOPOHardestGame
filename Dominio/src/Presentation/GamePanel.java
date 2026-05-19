@@ -12,41 +12,41 @@ import java.util.List;
  * Flujo: LevelSelectGUI → GamePanel
  *
  * Contiene:
- *  - HUD (50px arriba): MENU | nivel/monedas | DEATHS
- *  - Tablero centrado (20×10 celdas de 26px = 520×260px)
- *  - GameLoop a 30 FPS via javax.swing.Timer
- *  - Input: Player1 WASD + flechas | Player2 flechas
+ * - HUD (50px arriba): MENU | nivel/monedas | DEATHS
+ * - Tablero centrado (20×10 celdas de 26px = 520×260px)
+ * - GameLoop a 30 FPS via javax.swing.Timer
+ * - Input: Player1 WASD + flechas | Player2 flechas
  */
 public class GamePanel extends JFrame {
 
     // ──── Constantes de layout ────
-    private static final int WINDOW_W  = 600;
-    private static final int WINDOW_H  = 500;
-    private static final int HUD_H     = 50;
-    private static final int CELL      = 26;          // px por celda
-    private static final int FPS       = 30;
-    private static final int TICK_MS   = 1000 / FPS;
+    private static final int WINDOW_W = 600;
+    private static final int WINDOW_H = 500;
+    private static final int HUD_H = 50;
+    private static final int CELL = 26; // px por celda
+    private static final int FPS = 30;
+    private static final int TICK_MS = 1000 / FPS;
 
-    // ──── Colores (fieles a la imagen) ────
-    private static final Color COLOR_BG         = new Color(106, 140, 224);  // azul lavanda
-    private static final Color COLOR_SPAWN      = new Color(144, 238, 144);  // verde claro
-    private static final Color COLOR_GOAL       = new Color(144, 238, 144);  // verde claro
-    private static final Color COLOR_WALKABLE_A = new Color(220, 225, 240);  // ajedrez claro
-    private static final Color COLOR_WALKABLE_B = new Color(200, 208, 230);  // ajedrez oscuro
-    private static final Color COLOR_SAFE       = new Color(180, 230, 180);
-    private static final Color COLOR_BORDER     = Color.BLACK;
-    private static final Color COLOR_HUD_BG     = Color.BLACK;
-    private static final Color COLOR_HUD_TEXT   = Color.WHITE;
-    private static final Color COLOR_PLAYER_1   = new Color(210, 30, 30);    // rojo
-    private static final Color COLOR_PLAYER_2   = new Color(30, 100, 210);   // azul
-    private static final Color COLOR_ENEMY      = new Color(20, 20, 140);    // azul oscuro
+    // ──── Colores ────
+    private static final Color COLOR_BG = new Color(106, 140, 224); // azul lavanda
+    private static final Color COLOR_SPAWN = new Color(144, 238, 144); // verde claro
+    private static final Color COLOR_GOAL = new Color(144, 238, 144); // verde claro
+    private static final Color COLOR_WALKABLE_A = new Color(220, 225, 240); // ajedrez claro
+    private static final Color COLOR_WALKABLE_B = new Color(200, 208, 230); // ajedrez oscuro
+    private static final Color COLOR_SAFE = new Color(180, 230, 180);
+    private static final Color COLOR_BORDER = Color.BLACK;
+    private static final Color COLOR_HUD_BG = Color.BLACK;
+    private static final Color COLOR_HUD_TEXT = Color.WHITE;
+    private static final Color COLOR_PLAYER_1 = new Color(210, 30, 30); // rojo
+    private static final Color COLOR_PLAYER_2 = new Color(30, 100, 210); // azul
+    private static final Color COLOR_ENEMY = new Color(20, 20, 140); // azul oscuro
 
     // ──── Estado del juego ────
-    private Game        game = null;
-    private final GameMode  gameMode;
-    private final String    playerType;
-    private final String    levelFile;
-    private       int       totalCoins;
+    private Game game = null;
+    private final GameMode gameMode;
+    private final String playerType;
+    private final String levelFile;
+    private int totalCoins;
 
     // ──── GameLoop ────
     private Timer gameLoop;
@@ -61,10 +61,17 @@ public class GamePanel extends JFrame {
     private int boardOffsetX;
     private int boardOffsetY;
 
+    // ----- MEnu de archivo
+    private JButton btnMenu;
+    private JPopupMenu popupMenu;
+
+    // -- Carpeta de Guardados
+    private static final String SAVES_DIR = "saves";
+
     public GamePanel(GameMode mode, String playerType, String levelFile) {
-        this.gameMode   = mode;
+        this.gameMode = mode;
         this.playerType = playerType;
-        this.levelFile  = levelFile;
+        this.levelFile = levelFile;
 
         // ── Cargar nivel ──
         Level level = LevelLoader.load(levelFile, "Nivel 1");
@@ -82,7 +89,7 @@ public class GamePanel extends JFrame {
 
         // ── Calcular offset para centrar el tablero ──
         int boardW = level.getBoard().getColumns() * CELL;
-        int boardH = level.getBoard().getRows()    * CELL;
+        int boardH = level.getBoard().getRows() * CELL;
         boardOffsetX = (WINDOW_W - boardW) / 2;
         boardOffsetY = HUD_H + (WINDOW_H - HUD_H - boardH) / 2;
 
@@ -101,12 +108,13 @@ public class GamePanel extends JFrame {
     }
 
     // ═══════════════════════════════════════
-    //  SETUP JUGADORES
+    // SETUP JUGADORES
     // ═══════════════════════════════════════
 
     private void setupPlayers(Level level) {
         Position spawn = level.getDefaultSpawn();
-        if (spawn == null) spawn = new Position(0, 0);
+        if (spawn == null)
+            spawn = new Position(0, 0);
 
         Player p1 = createPlayer(playerType, "Player1", spawn);
         game.addPlayer(p1);
@@ -123,24 +131,38 @@ public class GamePanel extends JFrame {
 
     private Player createPlayer(String type, String name, Position pos) {
         switch (type) {
-            case "Green": return new GreenPlayer(name, pos);
-            case "Blue":  return new BluePlayer(name, pos);
-            default:      return new RedPlayer(name, pos);
+            case "Green":
+                return new GreenPlayer(name, pos);
+            case "Blue":
+                return new BluePlayer(name, pos);
+            default:
+                return new RedPlayer(name, pos);
         }
     }
 
     // ═══════════════════════════════════════
-    //  PREPARAR ELEMENTOS
+    // PREPARAR ELEMENTOS
     // ═══════════════════════════════════════
 
     private void prepareElements() {
         drawPanel = new DrawPanel();
         drawPanel.setLayout(null);
         setContentPane(drawPanel);
+
+        // Boton Menu
+        btnMenu = new JButton("Menu");
+        btnMenu.setFont(new Font("Arial", Font.BOLD, 16));
+        btnMenu.setForeground(Color.WHITE);
+        btnMenu.setBackground(Color.BLACK);
+        btnMenu.setBorderPainted(false);
+        btnMenu.setFocusPainted(false);
+        btnMenu.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        btnMenu.setBounds(5, 10, 80, 30);
+        drawPanel.add(btnMenu);
     }
 
     // ═══════════════════════════════════════
-    //  PREPARAR ACCIONES (teclado)
+    // PREPARAR ACCIONES (teclado)
     // ═══════════════════════════════════════
 
     private void prepareActions() {
@@ -150,7 +172,8 @@ public class GamePanel extends JFrame {
             @Override
             public void keyPressed(KeyEvent e) {
                 int code = e.getKeyCode();
-                if (code < keys.length) keys[code] = true;
+                if (code < keys.length)
+                    keys[code] = true;
 
                 // Pausa
                 if (code == KeyEvent.VK_ESCAPE || code == KeyEvent.VK_P) {
@@ -161,7 +184,8 @@ public class GamePanel extends JFrame {
             @Override
             public void keyReleased(KeyEvent e) {
                 int code = e.getKeyCode();
-                if (code < keys.length) keys[code] = false;
+                if (code < keys.length)
+                    keys[code] = false;
             }
         });
 
@@ -169,7 +193,7 @@ public class GamePanel extends JFrame {
     }
 
     // ═══════════════════════════════════════
-    //  GAME LOOP
+    // GAME LOOP
     // ═══════════════════════════════════════
 
     private void startGameLoop() {
@@ -186,17 +210,25 @@ public class GamePanel extends JFrame {
 
     private void processInput() {
         // ── Player 1: WASD + flechas ──
-        if (keys[KeyEvent.VK_W] || keys[KeyEvent.VK_UP])    game.movePlayer(0, Direction.UP);
-        if (keys[KeyEvent.VK_S] || keys[KeyEvent.VK_DOWN])  game.movePlayer(0, Direction.DOWN);
-        if (keys[KeyEvent.VK_A] || keys[KeyEvent.VK_LEFT])  game.movePlayer(0, Direction.LEFT);
-        if (keys[KeyEvent.VK_D] || keys[KeyEvent.VK_RIGHT]) game.movePlayer(0, Direction.RIGHT);
+        if (keys[KeyEvent.VK_W] || keys[KeyEvent.VK_UP])
+            game.movePlayer(0, Direction.UP);
+        if (keys[KeyEvent.VK_S] || keys[KeyEvent.VK_DOWN])
+            game.movePlayer(0, Direction.DOWN);
+        if (keys[KeyEvent.VK_A] || keys[KeyEvent.VK_LEFT])
+            game.movePlayer(0, Direction.LEFT);
+        if (keys[KeyEvent.VK_D] || keys[KeyEvent.VK_RIGHT])
+            game.movePlayer(0, Direction.RIGHT);
 
         // ── Player 2: solo flechas ──
         if (gameMode.isMultiplayer()) {
-            if (keys[KeyEvent.VK_UP])    game.movePlayer(1, Direction.UP);
-            if (keys[KeyEvent.VK_DOWN])  game.movePlayer(1, Direction.DOWN);
-            if (keys[KeyEvent.VK_LEFT])  game.movePlayer(1, Direction.LEFT);
-            if (keys[KeyEvent.VK_RIGHT]) game.movePlayer(1, Direction.RIGHT);
+            if (keys[KeyEvent.VK_UP])
+                game.movePlayer(1, Direction.UP);
+            if (keys[KeyEvent.VK_DOWN])
+                game.movePlayer(1, Direction.DOWN);
+            if (keys[KeyEvent.VK_LEFT])
+                game.movePlayer(1, Direction.LEFT);
+            if (keys[KeyEvent.VK_RIGHT])
+                game.movePlayer(1, Direction.RIGHT);
         }
     }
 
@@ -210,7 +242,7 @@ public class GamePanel extends JFrame {
 
     private void checkGameOver() {
         if (game.getGameState() instanceof GameOverState ||
-            game.getGameState() instanceof WinState) {
+                game.getGameState() instanceof WinState) {
             gameLoop.stop();
             showEndDialog();
         }
@@ -224,7 +256,7 @@ public class GamePanel extends JFrame {
 
         int option = JOptionPane.showOptionDialog(this, msg, "Fin del juego",
                 JOptionPane.DEFAULT_OPTION, JOptionPane.INFORMATION_MESSAGE,
-                null, new String[]{"Reintentar", "Menú principal"}, "Reintentar");
+                null, new String[] { "Reintentar", "Menú principal" }, "Reintentar");
 
         if (option == 0) {
             new GamePanel(gameMode, playerType, levelFile);
@@ -235,7 +267,7 @@ public class GamePanel extends JFrame {
     }
 
     // ═══════════════════════════════════════
-    //  PANEL DE DIBUJO
+    // PANEL DE DIBUJO
     // ═══════════════════════════════════════
 
     private class DrawPanel extends JPanel {
@@ -293,7 +325,7 @@ public class GamePanel extends JFrame {
         // ── Tablero ──
         private void drawBoard(Graphics2D g2) {
             GameBoard board = game.getCurrentLevel().getBoard();
-            Cell[][] cells  = board.getCells();
+            Cell[][] cells = board.getCells();
 
             for (int row = 0; row < board.getRows(); row++) {
                 for (int col = 0; col < board.getColumns(); col++) {
@@ -320,7 +352,8 @@ public class GamePanel extends JFrame {
                         case SAFE_ZONE: {
                             // Patrón ajedrezado
                             Color chess = ((row + col) % 2 == 0)
-                                    ? COLOR_WALKABLE_A : COLOR_WALKABLE_B;
+                                    ? COLOR_WALKABLE_A
+                                    : COLOR_WALKABLE_B;
                             g2.setColor(chess);
                             g2.fillRect(px, py, CELL, CELL);
                             g2.setColor(COLOR_BORDER);
@@ -341,7 +374,7 @@ public class GamePanel extends JFrame {
 
             // Borde exterior del tablero completo
             int boardW = board.getColumns() * CELL;
-            int boardH = board.getRows()    * CELL;
+            int boardH = board.getRows() * CELL;
             g2.setColor(COLOR_BORDER);
             g2.setStroke(new BasicStroke(2f));
             g2.drawRect(boardOffsetX, boardOffsetY, boardW, boardH);
@@ -351,10 +384,11 @@ public class GamePanel extends JFrame {
         private void drawCoins(Graphics2D g2) {
             List<Coin> coins = game.getCurrentLevel().getCoins();
             for (Coin coin : coins) {
-                if (coin.isCollected()) continue;
+                if (coin.isCollected())
+                    continue;
                 int px = boardOffsetX + coin.getPosition().getColumn() * CELL + CELL / 2;
-                int py = boardOffsetY + coin.getPosition().getRow()    * CELL + CELL / 2;
-                int r  = CELL / 4;
+                int py = boardOffsetY + coin.getPosition().getRow() * CELL + CELL / 2;
+                int r = CELL / 4;
 
                 if (coin instanceof SkinCoin) {
                     g2.setColor(new Color(255, 140, 0)); // naranja
@@ -371,10 +405,11 @@ public class GamePanel extends JFrame {
         private void drawSpecialElements(Graphics2D g2) {
             List<SpecialElement> elements = game.getCurrentLevel().getSpecialElements();
             for (SpecialElement el : elements) {
-                if (!el.isActive()) continue;
+                if (!el.isActive())
+                    continue;
                 int px = boardOffsetX + el.getPosition().getColumn() * CELL + CELL / 2;
-                int py = boardOffsetY + el.getPosition().getRow()    * CELL + CELL / 2;
-                int r  = CELL / 3;
+                int py = boardOffsetY + el.getPosition().getRow() * CELL + CELL / 2;
+                int r = CELL / 3;
 
                 if (el instanceof Bomb) {
                     g2.setColor(Color.DARK_GRAY);
@@ -394,10 +429,11 @@ public class GamePanel extends JFrame {
         private void drawEnemies(Graphics2D g2) {
             List<Enemy> enemies = game.getCurrentLevel().getEnemies();
             for (Enemy enemy : enemies) {
-                if (!enemy.isActive()) continue;
+                if (!enemy.isActive())
+                    continue;
                 int px = boardOffsetX + enemy.getPosition().getColumn() * CELL + CELL / 2;
-                int py = boardOffsetY + enemy.getPosition().getRow()    * CELL + CELL / 2;
-                int r  = CELL / 2 - 3;
+                int py = boardOffsetY + enemy.getPosition().getRow() * CELL + CELL / 2;
+                int r = CELL / 2 - 3;
 
                 g2.setColor(COLOR_ENEMY);
                 g2.fillOval(px - r, py - r, r * 2, r * 2);
@@ -413,7 +449,7 @@ public class GamePanel extends JFrame {
             for (int i = 0; i < players.size(); i++) {
                 Player p = players.get(i);
                 int px = boardOffsetX + p.getPosition().getColumn() * CELL + 3;
-                int py = boardOffsetY + p.getPosition().getRow()    * CELL + 3;
+                int py = boardOffsetY + p.getPosition().getRow() * CELL + 3;
                 int sz = CELL - 6;
 
                 Color color = (i == 0) ? getPlayerColor() : COLOR_PLAYER_2;
@@ -444,23 +480,25 @@ public class GamePanel extends JFrame {
     }
 
     // ═══════════════════════════════════════
-    //  UTILIDADES
+    // UTILIDADES
     // ═══════════════════════════════════════
 
     private Color getPlayerColor() {
         switch (playerType) {
-            case "Green": return new Color(40, 170, 60);
-            case "Blue":  return new Color(40, 100, 220);
-            default:      return COLOR_PLAYER_1;
+            case "Green":
+                return new Color(40, 170, 60);
+            case "Blue":
+                return new Color(40, 100, 220);
+            default:
+                return COLOR_PLAYER_1;
         }
     }
 
     // ═══════════════════════════════════════
-    //  MAIN (prueba independiente)
+    // MAIN (prueba independiente)
     // ═══════════════════════════════════════
 
     public static void main(String[] args) {
-        SwingUtilities.invokeLater(() ->
-                new GamePanel(GameMode.SINGLE_PLAYER, "Red", "recursos/nivel1.txt"));
+        SwingUtilities.invokeLater(() -> new GamePanel(GameMode.SINGLE_PLAYER, "Red", "recursos/nivel1.txt"));
     }
 }

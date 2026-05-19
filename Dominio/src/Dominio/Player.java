@@ -3,7 +3,7 @@ package Dominio;
 import java.awt.Color;
 
 public abstract class Player {
-	//Atributos
+    // Atributos
     protected String name;
     protected Position position;
     protected Position spawnPoint;
@@ -15,141 +15,186 @@ public abstract class Player {
     protected boolean alive;
     protected Color borderColor;
     protected Color bodyColor;
-	
-	/**
-	 * Constructor
-	 * @param initialPosition
-	 * @param speed
-	 */
-	
+
+    /**
+     * Constructor
+     * 
+     * @param initialPosition
+     * @param speed
+     */
+
     public Player(String name, Position initialPosition) {
-        this.name=name;
-        this.position=initialPosition;
-        this.spawnPoint=initialPosition;
-        this.deaths=0;
-        this.alive=true;
-        this.collectedCoins=0;
-        this.lives=0;
-        
-        this.speed=1.0;
-        this.size=1.0;
+        this.name = name;
+        this.position = initialPosition;
+        this.spawnPoint = initialPosition;
+        this.deaths = 0;
+        this.alive = true;
+        this.collectedCoins = 0;
+        this.lives = 0;
+
+        this.speed = 1.0;
+        this.size = 1.0;
     }
-    
-    //Movimiento
+
+    // Movimiento
 
     public void move(Direction direction) {
-    	
-    	position= calculateNextPosition(direction);
+
+        position = calculateNextPosition(direction);
     }
-    	
+
     public Position calculateNextPosition(Direction direction) {
-    	
-    	int row = position.getRow();
-    	int column= position.getColumn();
-    	
+
+        int row = position.getRow();
+        int column = position.getColumn();
+
         switch (direction) {
-            case UP:    row--; break;
-            case DOWN:  row++; break;
-            case LEFT:  column--; break;
-            case RIGHT: column++; break;
-            case UP_LEFT: row--; column--; break;
-            case UP_RIGHT: row--; column++; break;
-            case DOWN_LEFT: row++; column--; break;
-            case DOWN_RIGHT: row++; column++; break;
+            case UP:
+                row--;
+                break;
+            case DOWN:
+                row++;
+                break;
+            case LEFT:
+                column--;
+                break;
+            case RIGHT:
+                column++;
+                break;
+            case UP_LEFT:
+                row--;
+                column--;
+                break;
+            case UP_RIGHT:
+                row--;
+                column++;
+                break;
+            case DOWN_LEFT:
+                row++;
+                column--;
+                break;
+            case DOWN_RIGHT:
+                row++;
+                column++;
+                break;
         }
-        return new Position(row,column);
+        return new Position(row, column);
     }
-    
-    //Vidas y muertes
+
+    // Vidas y muertes
 
     public void die() {
-    	deaths++;
-    	respawn();
+        deaths++;
+        respawn();
 
     }
-    
+
     public void respawn() {
-    	position= spawnPoint;
-    	alive=true;
+        position = spawnPoint;
+        alive = true;
     }
-    
+
     public void addLife() {
-    	lives++;
+        lives++;
     }
-    
-    //Monedas
-    
+
+    // Monedas
+
     public void addCoin() {
-    	collectedCoins++;
+        collectedCoins++;
     }
-    
+
     public void resetCoins() {
-    	collectedCoins=0;
+        collectedCoins = 0;
     }
-    
-    //Spawn
-    
+
+    // Spawn
+
     public void setSpawnPoint(Position newSpawn) {
-    	spawnPoint=newSpawn;
+        spawnPoint = newSpawn;
     }
-    
-    //Colisiones
-    
+
+    // Colisiones
+
     public boolean collides(Player other) {
-    	return position.equals(other.getPosition());
+        return position.equals(other.getPosition());
     }
-    
-    //Habilidad Especial
+
+    // Habilidad Especial
     public abstract void receiveHit();
-    
-    //Getters
+
+    // Getters
     public String getName() {
-    	return name;
+        return name;
     }
-    
-    public Position getPosition() { 
-    	return position; 
-    	}
-    
+
+    public Position getPosition() {
+        return position;
+    }
+
     public double getSpeed() {
-    	return speed;
+        return speed;
     }
-   
-   public double getSize() {
-	   return size;
-   }
 
-   public int getDeaths() {
-	   return deaths;
-   }
+    public double getSize() {
+        return size;
+    }
 
-   public int getCollectedCoins() {
-	   return collectedCoins;
-   }
+    public int getDeaths() {
+        return deaths;
+    }
 
-   public int getLives() {
-	   return lives;
-   }
+    public int getCollectedCoins() {
+        return collectedCoins;
+    }
 
-   public boolean isAlive() {
-	   return alive;
-   }
+    public int getLives() {
+        return lives;
+    }
 
-   public Color getBorderColor() {
-	   return borderColor;
-   }
+    public boolean isAlive() {
+        return alive;
+    }
 
-   public Color getBodyColor() {
-	   return bodyColor;
-   }
+    public Color getBorderColor() {
+        return borderColor;
+    }
 
-   //Setters
-   public void setBorderColor(Color borderColor) {
-	   this.borderColor=borderColor;
-   }
+    public Color getBodyColor() {
+        return bodyColor;
+    }
 
-   public void setBodyColor(Color bodyColor) {
-	   this.bodyColor=bodyColor;
-   }
+    // Setters
+    public void setBorderColor(Color borderColor) {
+        this.borderColor = borderColor;
+    }
+
+    public void setBodyColor(Color bodyColor) {
+        this.bodyColor = bodyColor;
+    }
+
+    public void setPosition(Position position) {
+        this.position = position;
+    }
+
+    /**
+     * Establece el contador de muertes.
+     * Usado al restaurar una partida guardada.
+     *
+     * @param deaths número de muertes a restaurar
+     */
+    public void setDeaths(int deaths) {
+        this.deaths = deaths;
+    }
+
+    /**
+     * Establece el contador de monedas recogidas.
+     * Usado al restaurar una partida guardada.
+     *
+     * @param collectedCoins número de monedas a restaurar
+     */
+    public void setCollectedCoins(int collectedCoins) {
+        this.collectedCoins = collectedCoins;
+    }
 
 }

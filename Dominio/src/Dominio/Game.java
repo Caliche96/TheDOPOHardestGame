@@ -237,7 +237,7 @@ public class Game {
 	 * @param path Ruta donde se encuentra el juego
 	 * @throws GameException Si ocurre un error al cargar el juego
 	 */
-	public GameSave loadGame(String path) throws GameException {
+	public static GameSave loadGame(String path) throws GameException {
 		try (java.io.ObjectInputStream ois = new java.io.ObjectInputStream(new java.io.FileInputStream(path))) {
 			return (GameSave) ois.readObject();
 		} catch (ClassNotFoundException | java.io.IOException e) {
