@@ -4,64 +4,41 @@ public abstract class Coin {
     protected Position position;
     protected boolean collected;
 
-    /**
-     * Constructor de la clase Coin
-     * 
-     * @param position Posición de la moneda
-     */
     public Coin(Position position) {
         this.position = position;
         this.collected = false;
     }
 
-    /**
-     * Aplica el efecto de la moneda al jugador
-     * 
-     * @param player Jugador
-     */
+    //Efecto de la moneda
+    
     public abstract void applyEffect(Player player);
-
-    /**
-     * Verifica si el jugador colisiona con la moneda
-     * 
-     * @param player Jugador
-     * @return true si el jugador colisiona con la moneda, false en caso contrario
-     */
+    
+    //Colisiones
+    
     public boolean collides(Player player) {
-        return position.equals(player.getPosition());
+        // Centro de la moneda en píxeles
+        float coinX = position.getColumn() * GameConfig.CELL_SIZE + GameConfig.CELL_SIZE / 2f;
+        float coinY = position.getRow()    * GameConfig.CELL_SIZE + GameConfig.CELL_SIZE / 2f;
+        float r = GameConfig.CELL_SIZE / 4f;
+        // Colisión círculo vs AABB del jugador
+        float nearX = Math.max(player.getX(), Math.min(coinX, player.getX() + player.getSize()));
+        float nearY = Math.max(player.getY(), Math.min(coinY, player.getY() + player.getSize()));
+        float dx = coinX - nearX;
+        float dy = coinY - nearY;
+        return (dx * dx + dy * dy) < (r * r);
     }
-
-    /**
-     * Recolecta la moneda
-     */
+    
+    //Estado
+    
     public void collect() {
         collected = true;
     }
 
-    /**
-     * Verifica si la moneda ha sido recolectada
-     * 
-     * @return true si la moneda ha sido recolectada, false en caso contrario
-     */
     public boolean isCollected() {
         return collected;
     }
 
-    /**
-     * Obtiene la posición de la moneda
-     * 
-     * @return Posición de la moneda
-     */
-    public Position getPosition() {
-        return position;
-    }
+    //Getters
 
-    /**
-     * Establece la posición de la moneda
-     * 
-     * @param position Nueva posición de la moneda
-     */
-    public void setPosition(Position position) {
-        this.position = position;
-    }
+    public Position getPosition() { return position; }
 }

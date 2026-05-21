@@ -46,6 +46,7 @@ public class GamePanel extends JFrame {
     private final GameMode  gameMode;
     private final String    playerType;
     private final String    player2Type;   // null en Single Player
+    private final String    machineType;   // "Random" o "Expert", solo en PvM
     private final String    levelFile;
     private       int       totalCoins;
 
@@ -79,26 +80,11 @@ public class GamePanel extends JFrame {
     private int playerTickCounter = 0;
     private int enemyTickCounter  = 0;
 
-    // ──── Última dirección presionada (para movimiento suave) ────
-    private Direction lastDirection  = null;
-    private Direction lastDirection2 = null;
-    private boolean   movedThisTick  = false;
-
-    // ──── Posiciones visuales interpoladas (LERP) ────
-    // Jugadores: posición en píxeles que se interpola suavemente hacia la celda lógica
-    private float[] playerVisualX;   // x visual de cada jugador
-    private float[] playerVisualY;   // y visual de cada jugador
-    // Enemigos: igual
-    private float[] enemyVisualX;
-    private float[] enemyVisualY;
-
-    /** Factor de interpolación LERP: 0.0 = sin movimiento, 1.0 = instantáneo. */
-    private static final float LERP = 0.22f;
-
-    public GamePanel(GameMode mode, String playerType, String player2Type, String levelFile) {
+    public GamePanel(GameMode mode, String playerType, String player2Type, String machineType, String levelFile) {
         this.gameMode    = mode;
         this.playerType  = playerType;
         this.player2Type = player2Type;
+        this.machineType = machineType;
         this.levelFile   = levelFile;
 
         // ── Cargar nivel ──
@@ -111,34 +97,15 @@ public class GamePanel extends JFrame {
 
         this.totalCoins = level.getCoins().size();
 
-        // ── Crear juego ──
-        this.game = new Game(level, mode);
-        setupPlayers(level);
-
         // ── Calcular offset para centrar el tablero ──
         int boardW = level.getBoard().getColumns() * CELL;
         int boardH = level.getBoard().getRows()    * CELL;
         boardOffsetX = (WINDOW_W - boardW) / 2;
         boardOffsetY = HUD_H + (WINDOW_H - HUD_H - boardH) / 2;
 
-        // ── Inicializar posiciones visuales (LERP) en la posición lógica inicial ──
-        int numPlayers = game.getPlayers().size();
-        playerVisualX = new float[numPlayers];
-        playerVisualY = new float[numPlayers];
-        for (int i = 0; i < numPlayers; i++) {
-            Position p = game.getPlayers().get(i).getPosition();
-            playerVisualX[i] = boardOffsetX + p.getColumn() * CELL + 3;
-            playerVisualY[i] = boardOffsetY + p.getRow()    * CELL + 3;
-        }
-
-        int numEnemies = level.getEnemies().size();
-        enemyVisualX = new float[numEnemies];
-        enemyVisualY = new float[numEnemies];
-        for (int i = 0; i < numEnemies; i++) {
-            Position p = level.getEnemies().get(i).getPosition();
-            enemyVisualX[i] = boardOffsetX + p.getColumn() * CELL + CELL / 2f;
-            enemyVisualY[i] = boardOffsetY + p.getRow()    * CELL + CELL / 2f;
-        }
+        // ── Crear juego y jugadores ──
+        this.game = new Game(level, mode);
+        setupPlayers(level);
 
         // ── Ventana ──
         setTitle("The DOPO Hardest Game");
@@ -159,46 +126,50 @@ public class GamePanel extends JFrame {
     // ═══════════════════════════════════════
 
     private void setupPlayers(Level level) {
-        GameBoard board = level.getBoard();
+        int cell = GameConfig.CELL_SIZE;
+        float playerSize = cell - 6f;
+        float offset = (cell - playerSize) / 2f;
 
-        // Spawn P1: primera celda SPAWN_ZONE encontrada (izquierda)
         Position spawn1 = level.getDefaultSpawn();
         if (spawn1 == null) spawn1 = new Position(0, 0);
+        float p1x = spawn1.getColumn() * cell + offset;
+        float p1y = spawn1.getRow()    * cell + offset;
 
-        Player p1 = createPlayer(playerType, "Player 1", spawn1);
+        Player p1 = createPlayer(playerType, "Player 1", p1x, p1y);
         game.addPlayer(p1);
 
         if (gameMode.isMultiplayer()) {
-            // Spawn P2: última celda GOAL encontrada (derecha) — sentido opuesto
-            Position spawn2 = findGoalSpawn(board, spawn1);
-            String p2Type = (player2Type != null) ? player2Type : "Red";
-            Player p2 = createPlayer(p2Type, "Player 2", spawn2);
-            game.addPlayer(p2);
+            Position spawn2 = findGoalSpawn(level.getBoard(), spawn1);
+            float p2x = spawn2.getColumn() * cell + offset;
+            float p2y = spawn2.getRow()    * cell + offset;
+
+            if (gameMode == GameMode.PLAYER_VS_MACHINE) {
+                MachineStrategy strategy = "Expert".equals(machineType)
+                        ? new ExpertMachineStrategy()
+                        : new RandomMachineStrategy();
+                game.addPlayer(new MachinePlayer("Machine", p2x, p2y, strategy));
+            } else {
+                String p2Type = (player2Type != null) ? player2Type : "Red";
+                game.addPlayer(createPlayer(p2Type, "Player 2", p2x, p2y));
+            }
         }
     }
 
-    /**
-     * Busca una posición de spawn para Player 2 en el lado opuesto del tablero.
-     * Encuentra la última celda tipo GOAL en la misma fila del spawn de P1.
-     */
     private Position findGoalSpawn(GameBoard board, Position p1Spawn) {
         int targetRow = p1Spawn.getRow();
-        // Buscar desde la derecha la primera celda GOAL en esa fila
         for (int col = board.getColumns() - 1; col >= 0; col--) {
-            CellType type = board.getCell(targetRow, col).getType();
-            if (type == CellType.GOAL) {
+            if (board.getCell(targetRow, col).getType() == CellType.GOAL) {
                 return new Position(targetRow, col);
             }
         }
-        // Fallback: esquina opuesta
         return new Position(targetRow, board.getColumns() - 1);
     }
 
-    private Player createPlayer(String type, String name, Position pos) {
+    private Player createPlayer(String type, String name, float x, float y) {
         switch (type) {
-            case "Green": return new GreenPlayer(name, pos);
-            case "Blue":  return new BluePlayer(name, pos);
-            default:      return new RedPlayer(name, pos);
+            case "Green": return new GreenPlayer(name, x, y);
+            case "Blue":  return new BluePlayer(name, x, y);
+            default:      return new RedPlayer(name, x, y);
         }
     }
 
@@ -213,13 +184,13 @@ public class GamePanel extends JFrame {
 
         // ── Botón MENU (sobre el HUD, izquierda) ──
         btnMenu = new JButton("MENU");
-        btnMenu.setFont(new Font("Arial", Font.BOLD, 16));
+        btnMenu.setFont(new Font("Arial", Font.BOLD, 14));
         btnMenu.setForeground(Color.WHITE);
         btnMenu.setBackground(Color.BLACK);
         btnMenu.setBorderPainted(false);
         btnMenu.setFocusPainted(false);
         btnMenu.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        btnMenu.setBounds(5, 10, 80, 30);
+        btnMenu.setBounds(5, 10, 110, 30);
         drawPanel.add(btnMenu);
 
         // ── Popup menu ──
@@ -262,16 +233,19 @@ public class GamePanel extends JFrame {
 
                     // Mover inmediatamente al presionar por primera vez (sin esperar el intervalo)
                     if (!wasPressed) {
-                        Direction dir1 = getDirectionP1(code);
-                        if (dir1 != null) {
-                            game.movePlayer(0, dir1);
-                            playerTickCounter = 0;
-                        }
+                        // Recalcular dirección completa con todas las teclas activas
+                        boolean up1    = keys[KeyEvent.VK_W] || (gameMode != GameMode.PLAYER_VS_PLAYER && keys[KeyEvent.VK_UP]);
+                        boolean down1  = keys[KeyEvent.VK_S] || (gameMode != GameMode.PLAYER_VS_PLAYER && keys[KeyEvent.VK_DOWN]);
+                        boolean left1  = keys[KeyEvent.VK_A] || (gameMode != GameMode.PLAYER_VS_PLAYER && keys[KeyEvent.VK_LEFT]);
+                        boolean right1 = keys[KeyEvent.VK_D] || (gameMode != GameMode.PLAYER_VS_PLAYER && keys[KeyEvent.VK_RIGHT]);
+                        Direction dir1 = resolveDirection(up1, down1, left1, right1);
+                        if (dir1 != null) game.movePlayer(0, dir1);
+
                         if (gameMode.isMultiplayer()) {
-                            Direction dir2 = getDirectionP2(code);
-                            if (dir2 != null) {
-                                game.movePlayer(1, dir2);
-                            }
+                            Direction dir2 = resolveDirection(
+                                keys[KeyEvent.VK_UP], keys[KeyEvent.VK_DOWN],
+                                keys[KeyEvent.VK_LEFT], keys[KeyEvent.VK_RIGHT]);
+                            if (dir2 != null) game.movePlayer(1, dir2);
                         }
                     }
                 }
@@ -330,30 +304,28 @@ public class GamePanel extends JFrame {
     private void startGameLoop() {
         gameLoop = new Timer(TICK_MS, new ActionListener() {
             public void actionPerformed(ActionEvent e) {
-                // ── Movimiento del jugador (cada PLAYER_MOVE_INTERVAL ticks) ──
-                playerTickCounter++;
-                if (playerTickCounter >= GameConfig.PLAYER_MOVE_INTERVAL) {
-                    processInput();
-                    playerTickCounter = 0;
+                // Input y movimiento del jugador cada tick (píxeles libres)
+                processInput();
+
+                // Movimiento de la máquina (PvM)
+                if (gameMode == GameMode.PLAYER_VS_MACHINE) {
+                    game.updateMachine();
                 }
 
-                // ── Movimiento de enemigos (cada ENEMY_MOVE_INTERVAL ticks) ──
+                // Movimiento de enemigos (cada ENEMY_MOVE_INTERVAL ticks)
                 enemyTickCounter++;
                 if (enemyTickCounter >= GameConfig.ENEMY_MOVE_INTERVAL) {
                     game.moveEnemies();
                     enemyTickCounter = 0;
                 }
 
-                // ── Resto de la lógica (colisiones, timer, victoria) ──
+                // Lógica: colisiones, timer, victoria
                 game.checkEnemyCollsion();
                 game.checkCoinCollision();
                 game.checkSpecialElements();
                 game.checkPlayerCollisions();
                 game.checkGoal();
                 game.updateTimer();
-
-                // ── Interpolación visual (LERP) ──
-                updateVisualPositions();
 
                 checkGameOver();
                 drawPanel.repaint();
@@ -362,60 +334,42 @@ public class GamePanel extends JFrame {
         gameLoop.start();
     }
 
-    /**
-     * Actualiza las posiciones visuales de jugadores y enemigos
-     * interpolando suavemente hacia su posición lógica actual (LERP ease-out).
-     *
-     * Fórmula: visual += (destino - visual) * LERP
-     * El resultado es un movimiento que empieza rápido y desacelera al llegar.
-     */
-    private void updateVisualPositions() {
-        // ── Jugadores ──
-        List<Player> players = game.getPlayers();
-        for (int i = 0; i < players.size() && i < playerVisualX.length; i++) {
-            Position p   = players.get(i).getPosition();
-            float targetX = boardOffsetX + p.getColumn() * CELL + 3;
-            float targetY = boardOffsetY + p.getRow()    * CELL + 3;
-            playerVisualX[i] += (targetX - playerVisualX[i]) * LERP;
-            playerVisualY[i] += (targetY - playerVisualY[i]) * LERP;
-        }
+    private void processInput() {
+        // ── Player 1 ──
+        boolean up1    = keys[KeyEvent.VK_W] || (gameMode != GameMode.PLAYER_VS_PLAYER && keys[KeyEvent.VK_UP]);
+        boolean down1  = keys[KeyEvent.VK_S] || (gameMode != GameMode.PLAYER_VS_PLAYER && keys[KeyEvent.VK_DOWN]);
+        boolean left1  = keys[KeyEvent.VK_A] || (gameMode != GameMode.PLAYER_VS_PLAYER && keys[KeyEvent.VK_LEFT]);
+        boolean right1 = keys[KeyEvent.VK_D] || (gameMode != GameMode.PLAYER_VS_PLAYER && keys[KeyEvent.VK_RIGHT]);
 
-        // ── Enemigos ──
-        List<Enemy> enemies = game.getCurrentLevel().getEnemies();
-        for (int i = 0; i < enemies.size() && i < enemyVisualX.length; i++) {
-            Position p   = enemies.get(i).getPosition();
-            float targetX = boardOffsetX + p.getColumn() * CELL + CELL / 2f;
-            float targetY = boardOffsetY + p.getRow()    * CELL + CELL / 2f;
-            enemyVisualX[i] += (targetX - enemyVisualX[i]) * LERP;
-            enemyVisualY[i] += (targetY - enemyVisualY[i]) * LERP;
+        Direction dir1 = resolveDirection(up1, down1, left1, right1);
+        if (dir1 != null) game.movePlayer(0, dir1);
+
+        // ── Player 2 — solo flechas ──
+        if (gameMode.isMultiplayer()) {
+            boolean up2    = keys[KeyEvent.VK_UP];
+            boolean down2  = keys[KeyEvent.VK_DOWN];
+            boolean left2  = keys[KeyEvent.VK_LEFT];
+            boolean right2 = keys[KeyEvent.VK_RIGHT];
+
+            Direction dir2 = resolveDirection(up2, down2, left2, right2);
+            if (dir2 != null) game.movePlayer(1, dir2);
         }
     }
 
-    private void processInput() {
-        // Player 1
-        Direction dir1 = null;
-        if (keys[KeyEvent.VK_W]) dir1 = Direction.UP;
-        else if (keys[KeyEvent.VK_S]) dir1 = Direction.DOWN;
-        else if (keys[KeyEvent.VK_A]) dir1 = Direction.LEFT;
-        else if (keys[KeyEvent.VK_D]) dir1 = Direction.RIGHT;
-        // Flechas para P1 solo en Single Player o PvM
-        else if (gameMode != GameMode.PLAYER_VS_PLAYER) {
-            if      (keys[KeyEvent.VK_UP])    dir1 = Direction.UP;
-            else if (keys[KeyEvent.VK_DOWN])  dir1 = Direction.DOWN;
-            else if (keys[KeyEvent.VK_LEFT])  dir1 = Direction.LEFT;
-            else if (keys[KeyEvent.VK_RIGHT]) dir1 = Direction.RIGHT;
-        }
-        if (dir1 != null) game.movePlayer(0, dir1);
-
-        // Player 2 — solo flechas, solo en multijugador
-        if (gameMode.isMultiplayer()) {
-            Direction dir2 = null;
-            if      (keys[KeyEvent.VK_UP])    dir2 = Direction.UP;
-            else if (keys[KeyEvent.VK_DOWN])  dir2 = Direction.DOWN;
-            else if (keys[KeyEvent.VK_LEFT])  dir2 = Direction.LEFT;
-            else if (keys[KeyEvent.VK_RIGHT]) dir2 = Direction.RIGHT;
-            if (dir2 != null) game.movePlayer(1, dir2);
-        }
+    /**
+     * Resuelve la dirección a partir de las teclas presionadas,
+     * incluyendo las 8 diagonales.
+     */
+    private Direction resolveDirection(boolean up, boolean down, boolean left, boolean right) {
+        if (up   && right) return Direction.UP_RIGHT;
+        if (up   && left)  return Direction.UP_LEFT;
+        if (down && right) return Direction.DOWN_RIGHT;
+        if (down && left)  return Direction.DOWN_LEFT;
+        if (up)            return Direction.UP;
+        if (down)          return Direction.DOWN;
+        if (left)          return Direction.LEFT;
+        if (right)         return Direction.RIGHT;
+        return null;
     }
 
     private void togglePause() {
@@ -493,6 +447,7 @@ public class GamePanel extends JFrame {
                         save.getGameMode(),
                         save.getPlayerSnapshots().get(0).getType(),
                         save.getPlayerSnapshots().size() > 1 ? save.getPlayerSnapshots().get(1).getType() : null,
+                        machineType,
                         save.getLevelFile());
                 restored.restoreFromSave(save);
                 dispose();
@@ -522,7 +477,8 @@ public class GamePanel extends JFrame {
         List<Player> players = game.getPlayers();
         for (int i = 0; i < Math.min(snapshots.size(), players.size()); i++) {
             GameSave.PlayerSnapshot snap = snapshots.get(i);
-            players.get(i).setPosition(new Position(snap.getRow(), snap.getCol()));
+            players.get(i).setX(snap.getCol() * GameConfig.CELL_SIZE);
+            players.get(i).setY(snap.getRow() * GameConfig.CELL_SIZE);
             players.get(i).setDeaths(snap.getDeaths());
             players.get(i).setCollectedCoins(snap.getCollectedCoins());
         }
@@ -578,7 +534,7 @@ public class GamePanel extends JFrame {
                 null, new String[]{"Reintentar", "Menú principal"}, "Reintentar");
 
         if (option == 0) {
-            new GamePanel(gameMode, playerType, player2Type, levelFile);
+            new GamePanel(gameMode, playerType, player2Type, machineType, levelFile);
         } else {
             new ModeSelectionPanel();
         }
@@ -751,12 +707,11 @@ public class GamePanel extends JFrame {
         // ── Enemigos: círculos azul oscuro ──
         private void drawEnemies(Graphics2D g2) {
             List<Enemy> enemies = game.getCurrentLevel().getEnemies();
-            int r = CELL / 2 - 3;
-            for (int i = 0; i < enemies.size(); i++) {
-                if (!enemies.get(i).isActive()) continue;
-                if (i >= enemyVisualX.length) break;
-                int px = Math.round(enemyVisualX[i]);
-                int py = Math.round(enemyVisualY[i]);
+            for (Enemy enemy : enemies) {
+                if (!enemy.isActive()) continue;
+                int px = Math.round(enemy.getX() + enemy.getSize() / 2f) + boardOffsetX;
+                int py = Math.round(enemy.getY() + enemy.getSize() / 2f) + boardOffsetY;
+                int r  = Math.round(enemy.getSize() / 2f);
 
                 g2.setColor(COLOR_ENEMY);
                 g2.fillOval(px - r, py - r, r * 2, r * 2);
@@ -766,21 +721,40 @@ public class GamePanel extends JFrame {
             }
         }
 
-        // ── Jugadores: cuadrados de color con borde negro ──
+        // ── Jugadores: círculos de color con borde negro ──
         private void drawPlayers(Graphics2D g2) {
             List<Player> players = game.getPlayers();
-            int sz = CELL - 6;
             for (int i = 0; i < players.size(); i++) {
-                if (i >= playerVisualX.length) break;
-                int px = Math.round(playerVisualX[i]);
-                int py = Math.round(playerVisualY[i]);
+                Player p  = players.get(i);
+                int cx    = Math.round(p.getX() + p.getSize() / 2f) + boardOffsetX;
+                int cy    = Math.round(p.getY() + p.getSize() / 2f) + boardOffsetY;
+                int r     = Math.round(p.getSize() / 2f);
 
                 Color color = (i == 0) ? getPlayerColor() : COLOR_PLAYER_2;
+
+                // Sombra
+                g2.setColor(new Color(0, 0, 0, 60));
+                g2.fillOval(cx - r + 2, cy - r + 2, r * 2, r * 2);
+
+                // Cuerpo
                 g2.setColor(color);
-                g2.fillRect(px, py, sz, sz);
+                g2.fillOval(cx - r, cy - r, r * 2, r * 2);
+
+                // Brillo superior
+                g2.setColor(new Color(255, 255, 255, 80));
+                g2.fillOval(cx - r + 2, cy - r + 2, r, r / 2);
+
+                // Borde
                 g2.setColor(Color.BLACK);
                 g2.setStroke(new BasicStroke(2f));
-                g2.drawRect(px, py, sz, sz);
+                g2.drawOval(cx - r, cy - r, r * 2, r * 2);
+
+                // Número de jugador encima
+                g2.setColor(Color.WHITE);
+                g2.setFont(new Font("Arial", Font.BOLD, r));
+                FontMetrics fm = g2.getFontMetrics();
+                String label = String.valueOf(i + 1);
+                g2.drawString(label, cx - fm.stringWidth(label) / 2, cy + fm.getAscent() / 2 - 1);
             }
         }
 
@@ -820,6 +794,6 @@ public class GamePanel extends JFrame {
 
     public static void main(String[] args) {
         SwingUtilities.invokeLater(() ->
-                new GamePanel(GameMode.SINGLE_PLAYER, "Red", null, "recursos/nivel1.txt"));
+                new GamePanel(GameMode.SINGLE_PLAYER, "Red", null, null, "recursos/nivel1.txt"));
     }
 }

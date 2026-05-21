@@ -3,36 +3,43 @@ package Dominio;
 public abstract class SpecialElement {
 	protected Position position;
 	protected boolean active;
-
+	
 	public SpecialElement(Position position) {
-		this.position = position;
-		this.active = true;
+		this.position=position;
+		this.active=true;
 	}
-
-	// Efecto del elemento
+	
+	//Efecto del elemento
 	public abstract void applyEffect(Game game, Player player);
-
-	// Colisiones
+	
+	//Colisiones
 	public boolean collides(Player player) {
-		return position.equals(player.getPosition());
+		float ex = position.getColumn() * GameConfig.CELL_SIZE;
+		float ey = position.getRow()    * GameConfig.CELL_SIZE;
+		float es = GameConfig.CELL_SIZE;
+		return player.getX() < ex + es &&
+		       player.getX() + player.getSize() > ex &&
+		       player.getY() < ey + es &&
+		       player.getY() + player.getSize() > ey;
 	}
-
-	// Estado
+	
+	//Estado
 	public void deactivated() {
-		active = false;
-	}
-
-	public boolean isActive() {
-		return active;
-	}
-
-	// Getters
-	public Position getPosition() {
-		return position;
+		active=false;
 	}
 
 	public void consume() {
-		active = false;
+		active=false;
 	}
-
+	
+	public boolean isActive() {
+		return active;
+	}
+	
+	//Getters
+	public Position getPosition() {
+		return position;
+	}
+	
+	
 }

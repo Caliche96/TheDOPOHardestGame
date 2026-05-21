@@ -1,17 +1,13 @@
 package Dominio;
 
-public class RedPlayer extends Player{
+public class RedPlayer extends Player {
 
-	public RedPlayer(String name, Position initialPosition) {
-		super(name, initialPosition);
-		speed=1.0;
-		size=1.0;
-	}
+    public RedPlayer(String name, float spawnX, float spawnY) {
+        super(name, spawnX, spawnY, 2.0f, GameConfig.CELL_SIZE - 6f);
+    }
 
-	@Override
-	public void receiveHit() {
-		die();
-		
-	}
-
+    @Override
+    public void receiveHit() {
+        die();
+    }
 }

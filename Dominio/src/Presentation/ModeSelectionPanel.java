@@ -175,9 +175,9 @@ public class ModeSelectionPanel extends JFrame {
         );
 
         if (choice == 0 || choice == 1) {
-            // TODO: Pasar el tipo de máquina (choice==0 → Random, choice==1 → Expert)
-            //       a la siguiente pantalla cuando se implemente la IA.
-            selectMode(GameMode.PLAYER_VS_MACHINE);
+            String machineType = (choice == 1) ? "Expert" : "Random";
+            new SelectPlayerGUI(GameMode.PLAYER_VS_MACHINE, machineType);
+            dispose();
         }
     }
 

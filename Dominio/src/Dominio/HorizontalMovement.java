@@ -1,43 +1,43 @@
 package Dominio;
 
-public class HorizontalMovement implements MovementPattern{
-	private int direction;
-	
-	/**
-	 *  1= derecha, -1= izquierda
-	 *  
-	 */
-	public HorizontalMovement() {
-		direction=1;
-	}
+/**
+ * Patrón de movimiento horizontal en píxeles con rebote.
+ * El enemigo se mueve a velocidad constante en X. Cuando el bounding box
+ * toca una celda WALL, EMPTY, GOAL o SAFE_ZONE invierte la dirección.
+ */
+public class HorizontalMovement implements MovementPattern {
 
-	@Override
-	public void move(Enemy enemy,GameBoard board) {
-		Position current = enemy.getPosition();
-		Position next = new Position(current.getRow(), current.getColumn()+direction);
-		if (shouldBounce(next, board)) {
+    private float direction; // 1.0 = derecha, -1.0 = izquierda
+
+    public HorizontalMovement() {
+        direction = 1f;
+    }
+
+    @Override
+    public void move(Enemy enemy, GameBoard board) {
+        int cell = GameConfig.CELL_SIZE;
+        float newX = enemy.getX() + enemy.getSpeed() * direction;
+
+        if (collidesHorizontal(newX, enemy.getY(), enemy.getSize(), board, cell)) {
             direction *= -1;
-            // Recalcular con la dirección invertida
-            next = new Position(current.getRow(), current.getColumn() + direction);
+            newX = enemy.getX() + enemy.getSpeed() * direction;
         }
 
-        // Solo mover si la nueva posición es válida (por si está encerrado)
-        if (!shouldBounce(next, board)) {
-            enemy.setPosition(next);
+        if (!collidesHorizontal(newX, enemy.getY(), enemy.getSize(), board, cell)) {
+            enemy.setX(newX);
         }
     }
 
-    /**
-     * Determina si el enemigo debe rebotar en la posición indicada.
-     * Rebota si está fuera del tablero, es una pared, zona de meta o zona segura.
-     */
-    private boolean shouldBounce(Position pos, GameBoard board) {
-        if (!board.isInside(pos)) return true;
-        CellType type = board.getCell(pos.getRow(), pos.getColumn()).getType();
-        return type == CellType.WALL
-            || type == CellType.EMPTY
-            || type == CellType.GOAL
-            || type == CellType.SAFE_ZONE;
+    private boolean collidesHorizontal(float x, float y, float size, GameBoard board, int cell) {
+        float[] cx = { x, x + size - 1, x, x + size - 1 };
+        float[] cy = { y, y, y + size - 1, y + size - 1 };
+        for (int i = 0; i < 4; i++) {
+            int col = (int)(cx[i] / cell);
+            int row = (int)(cy[i] / cell);
+            if (!board.isInside(new Position(row, col))) return true;
+            CellType t = board.getCell(row, col).getType();
+            if (t == CellType.WALL || t == CellType.EMPTY) return true;
+        }
+        return false;
     }
-
 }

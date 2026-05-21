@@ -2,25 +2,13 @@ package Dominio;
 
 public class BluePlayer extends Player {
 
-	/**
-	 * Constructor de la clase BluePlayer
-	 * 
-	 * @param name            Nombre del jugador
-	 * @param initialPosition Posición inicial del jugador
-	 */
-	public BluePlayer(String name, Position initialPosition) {
-		super(name, initialPosition);
-		speed = 1.5;
-		size = 1.5;
-	}
+    public BluePlayer(String name, float spawnX, float spawnY) {
+        // Más rápido y ligeramente más grande
+        super(name, spawnX, spawnY, 7.0f, GameConfig.CELL_SIZE - 4f);
+    }
 
-	/**
-	 * Método que se ejecuta cuando el jugador recibe un impacto
-	 */
-	@Override
-	public void receiveHit() {
-		die();
-
-	}
-
+    @Override
+    public void receiveHit() {
+        die();
+    }
 }

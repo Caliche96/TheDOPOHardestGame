@@ -3,120 +3,81 @@ package Dominio;
 import java.util.*;
 
 public class Game {
-
-	// Atributos de la clase controladora del dominio
+	
+	//Atributos de la clase controladora del dominio
 	private Level currentLevel;
 	private List<Player> players;
-
+	
+	
 	private GameMode gameMode;
 	private GameState state;
 	private int remainingTime;
-	// Métodos de la clase Controladora
-
+	//Métodos de la clase Controladora
+	
 	/**
-	 * Constructor de la clase Game
-	 * 
-	 * @param level Nivel del juego
-	 * @param mode  Modo de juego
+	 * Constructor
 	 */
-	public Game(Level level, GameMode mode) {
-		this.currentLevel = level;
-		this.gameMode = mode;
-		this.players = new ArrayList<>();
-		this.state = new RunningState();
-		this.remainingTime = level.getTimeLimit();
-	}
+    public Game(Level level, GameMode mode) {
+        this.currentLevel=level;
+        this.gameMode=mode;
+        this.players= new ArrayList<>();
+        this.state = new RunningState();
+        this.remainingTime= level.getTimeLimit();
+    }
+    
+    //Metodos Principales
 
-	// Metodos Principales
+    public void update() {
+    	state.update(this);
+    }
+    
+    public void movePlayer(int playerIndex, Direction direccion) {
+    	state.movePlayer(this, playerIndex, direccion);
+    }
+    
+    public void pause() {
+    	state.pause(this);
+    }
 
-	/**
-	 * Actualiza el estado del juego
-	 */
-	public void update() {
-		state.update(this);
-	}
+    public void resume() {
+    	state.resume(this);
+    }
+    
+    public void finishGame() {
+    	state.finish(this);
+    }
+    
+    //-----------METODOS INTERNOS-------
 
-	/**
-	 * Mueve al jugador
-	 * 
-	 * @param playerIndex Índice del jugador
-	 * @param direccion   Dirección del movimiento
-	 */
-	public void movePlayer(int playerIndex, Direction direccion) {
-		state.movePlayer(this, playerIndex, direccion);
-	}
+    public void internalMovePlayer(int playerIndex, Direction direccion) {
+    	if (playerIndex < 0 || playerIndex >= players.size()) return;
+    	Player player = players.get(playerIndex);
+    	player.move(direccion, currentLevel.getBoard(), GameConfig.CELL_SIZE);
+    	checkSafeZone(player);
+    }
+    
+    //Parte de Enemigos
 
-	/**
-	 * Pausa el juego
-	 */
-	public void pause() {
-		state.pause(this);
-	}
-
-	/**
-	 * Reanuda el juego
-	 */
-	public void resume() {
-		state.resume(this);
-	}
-
-	/**
-	 * Finaliza el juego
-	 */
-	public void finishGame() {
-		state.finish(this);
-	}
-
-	// -----------METODOS INTERNOS-------
-
-	/**
-	 * Mueve al jugador internamente
-	 * 
-	 * @param playerIndex Índice del jugador
-	 * @param direccion   Dirección del movimiento
-	 */
-	public void internalMovePlayer(int playerIndex, Direction direccion) {
-		if (playerIndex < 0 || playerIndex >= players.size()) {
-			return;
-		}
-
-		Player player = players.get(playerIndex);
-		Position nextPosition = player.calculateNextPosition(direccion);
-
-		if (!currentLevel.getBoard().isWall(nextPosition)) {
-			player.move(direccion);
-			checkSafeZone(player);
-		}
-	}
-
-	// Parte de Enemigos
-	/**
-	 * Mueve a los enemigos
-	 */
-	public void moveEnemies() {
-		for (Enemy enemy : currentLevel.getEnemies()) {
-			enemy.update();
-		}
-	}
-
-	// Colisiones
-	/**
-	 * Verifica las colisiones con los enemigos
-	 */
-	public void checkEnemyCollsion() {
+    public void moveEnemies() {
+    	for (Enemy enemy: currentLevel.getEnemies()) {
+    		enemy.update();
+    	}
+    }
+    
+    
+    //Colisiones
+    public void checkEnemyCollsion() {
 		for (Player player : players) {
-			for (Enemy enemy : currentLevel.getEnemies()) {
+			for(Enemy enemy : currentLevel.getEnemies()) {
 				if (enemy.collides(player)) {
 					player.receiveHit();
 				}
 			}
 		}
-
+		
 	}
-
-	/**
-	 * Verifica las colisiones con las monedas
-	 */
+    
+    
 	public void checkCoinCollision() {
 		for (Player player : players) {
 			for (Coin coin : currentLevel.getCoins()) {
@@ -129,9 +90,6 @@ public class Game {
 		}
 	}
 
-	/**
-	 * Verifica las colisiones con los elementos especiales
-	 */
 	public void checkSpecialElements() {
 		for (SpecialElement element : currentLevel.getSpecialElements()) {
 			for (Player player : players) {
@@ -141,46 +99,34 @@ public class Game {
 			}
 		}
 	}
-
-	// Colision entre jugadores
-	/**
-	 * Verifica las colisiones entre jugadores
-	 */
+	
+	//Colision entre jugadores
 	public void checkPlayerCollisions() {
-		if (gameMode == GameMode.SINGLE_PLAYER) {
+		if (gameMode== GameMode.SINGLE_PLAYER) {
 			return;
 		}
-
-		for (int i = 0; i < players.size(); i++) {
-			for (int j = i + 1; j < players.size(); j++) {
-				Player p1 = players.get(i);
-				Player p2 = players.get(j);
-
-				if (p1.collides(p2)) {
+		
+		for (int i=0; i<players.size(); i++) {
+			for (int j =i+1; j<players.size(); j++) {
+				Player p1= players.get(i);
+				Player p2= players.get(j);
+				
+				if(p1.collides(p2)) {
 					p1.die();
 					p2.die();
 				}
 			}
 		}
 	}
-
-	/**
-	 * Verifica las colisiones con las zonas seguras
-	 * 
-	 * @param player Jugador
-	 */
+	
+	//Zonas Seguras
 	public void checkSafeZone(Player player) {
-		Cell currentCell = currentLevel.getBoard().getCell(player.getPosition().getRow(),
-				player.getPosition().getColumn());
-
-		if (currentCell.getType() == CellType.SAFE_ZONE) {
-			player.setSpawnPoint(player.getPosition());
+		if (player.isInSafeZone(currentLevel.getBoard(), GameConfig.CELL_SIZE)) {
+			player.setSpawnPoint(player.getX(), player.getY());
 		}
 	}
 
-	/**
-	 * Verifica si todos los jugadores han llegado a la meta
-	 */
+	//Victoria
 	public void checkGoal() {
 		if (!currentLevel.allCoinsCollected()) {
 			return;
@@ -188,11 +134,21 @@ public class Game {
 
 		boolean allPlayersFinished = true;
 
-		for (Player player : players) {
-			Cell currentCell = currentLevel.getBoard().getCell(player.getPosition().getRow(),
-					player.getPosition().getColumn());
+		for (int i = 0; i < players.size(); i++) {
+			Player player = players.get(i);
+			GameBoard board = currentLevel.getBoard();
+			int cell = GameConfig.CELL_SIZE;
 
-			if (currentCell.getType() != CellType.GOAL) {
+			boolean finished;
+			if (i == 0) {
+				// Player 1: debe llegar a la zona GOAL
+				finished = player.isInGoal(board, cell);
+			} else {
+				// Player 2 / Máquina: debe llegar a la zona SPAWN del Player 1
+				finished = player.isInSpawnZone(board, cell);
+			}
+
+			if (!finished) {
 				allPlayersFinished = false;
 			}
 		}
@@ -200,110 +156,97 @@ public class Game {
 		if (allPlayersFinished) {
 			finishGame();
 		}
-
 	}
+	
+	//Tiempo
 
-	/**
-	 * Actualiza el tiempo restante
-	 */
 	public void updateTimer() {
-		remainingTime--;
-		if (remainingTime <= 0) {
+		remainingTime --;
+		if (remainingTime <=0) {
 			finishGame();
-
+			
 		}
 	}
+		
+
+	
+	//Persistencia
 
 	/**
-	 * Guarda el estado actual del juego
-	 * 
-	 * @param path      Ruta donde se guardará el juego
-	 * @param levelFile Nombre del archivo del nivel actual
-	 * @throws GameException Si ocurre un error al guardar el juego
+	 * Serializa el estado actual del juego en un archivo .dat.
+	 * @param path      ruta destino  (ej. "saves/partida.dat")
+	 * @param levelFile ruta del .txt del nivel actual (para poder recargarlo al restaurar)
+	 * @throws GameException si no se puede escribir el archivo
 	 */
 	public void saveGame(String path, String levelFile) throws GameException {
 		GameSave save = new GameSave(this, levelFile);
 		try (java.io.ObjectOutputStream oos = new java.io.ObjectOutputStream(
 				new java.io.FileOutputStream(path))) {
 			oos.writeObject(save);
-		} catch (Exception e) {
-			throw new GameException("Error al guardar el juego" + e.getMessage());
+		} catch (java.io.IOException e) {
+			throw new GameException("No se pudo guardar la partida: " + e.getMessage());
 		}
 	}
 
 	/**
-	 * Carga el juego guardado
-	 * 
-	 * @param path Ruta donde se encuentra el juego
-	 * @throws GameException Si ocurre un error al cargar el juego
+	 * Deserializa un archivo .dat y restaura el estado del juego.
+	 * Recarga el nivel desde su .txt, aplica las monedas recogidas,
+	 * elementos consumidos y reposiciona a los jugadores.
+	 * @param path ruta del archivo .dat
+	 * @return GameSave con los datos restaurados (la presentación los usa para reconstruir el GamePanel)
+	 * @throws GameException si el archivo no existe o está corrupto
 	 */
 	public static GameSave loadGame(String path) throws GameException {
-		try (java.io.ObjectInputStream ois = new java.io.ObjectInputStream(new java.io.FileInputStream(path))) {
+		try (java.io.ObjectInputStream ois = new java.io.ObjectInputStream(
+				new java.io.FileInputStream(path))) {
 			return (GameSave) ois.readObject();
-		} catch (ClassNotFoundException | java.io.IOException e) {
-			throw new GameException("Error al cargar el juego" + e.getMessage());
+		} catch (java.io.IOException | ClassNotFoundException e) {
+			throw new GameException("No se pudo cargar la partida: " + e.getMessage());
 		}
 	}
-
-	/**
-	 * Añade un jugador al juego
-	 * 
-	 * @param player Jugador a añadir
-	 */
+	
+	
+	//Manejo de los jugadores
+	
 	public void addPlayer(Player player) {
 		players.add(player);
 	}
 
 	/**
-	 * Cambia el estado del juego
-	 * 
-	 * @param state Estado del juego
+	 * Actualiza el movimiento del jugador máquina si existe.
+	 * Debe llamarse cada tick desde GamePanel cuando el modo es PvM.
 	 */
-	public void setState(GameState state) {
-		this.state = state;
+	public void updateMachine() {
+		for (Player p : players) {
+			if (p instanceof MachinePlayer) {
+				((MachinePlayer) p).update(this);
+			}
+		}
 	}
-
-	/**
-	 * Obtiene el nivel actual
-	 * 
-	 * @return Nivel actual
-	 */
+	
+	
+	//CAMBIOS DE ESTADO
+	public void setState(GameState state) {
+		this.state=state;
+	}
+	
+	//GETTERS
 	public Level getCurrentLevel() {
 		return currentLevel;
 	}
-
-	/**
-	 * Obtiene la lista de jugadores
-	 * 
-	 * @return Lista de jugadores
-	 */
-	public List<Player> getPlayers() {
+	
+	public List<Player> getPlayers(){
 		return players;
 	}
-
-	/**
-	 * Obtiene el estado del juego
-	 * 
-	 * @return Estado del juego
-	 */
+	
 	public GameState getGameState() {
 		return state;
 	}
 
-	/**
-	 * Obtiene el tiempo restante
-	 * 
-	 * @return Tiempo restante
-	 */
 	public int getRemainingTime() {
 		return remainingTime;
 	}
-
-	/**
-	 * Obtiene el modo de juego
-	 * 
-	 * @return Modo de juego
-	 */
+	
 	public GameMode getGameMode() {
 		return gameMode;
 	}
@@ -311,5 +254,5 @@ public class Game {
 	public void setRemainingTime(int time) {
 		this.remainingTime = time;
 	}
-
+	
 }

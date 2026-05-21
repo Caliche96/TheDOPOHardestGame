@@ -43,27 +43,24 @@ public class SelectPlayerGUI extends JFrame {
 
     // ──── Estado ────
     private final GameMode selectedMode;
+    private final String   machineType;
+    private final int      playerNumber;
+    private final String   player1Type;
 
-    /**
-     * Número del jugador que está eligiendo actualmente.
-     * 1 = Player 1 eligiendo, 2 = Player 2 eligiendo.
-     */
-    private final int     playerNumber;
-
-    /**
-     * Tipo de personaje ya elegido por Player 1.
-     * Solo tiene valor cuando playerNumber == 2.
-     */
-    private final String  player1Type;
-
-    // ──── Constructor para Player 1 ────
+    // ──── Constructor para Player 1 (Single Player) ────
     public SelectPlayerGUI(GameMode mode) {
-        this(mode, 1, null);
+        this(mode, null, 1, null);
+    }
+
+    // ──── Constructor para Player 1 (PvM — pasa machineType) ────
+    public SelectPlayerGUI(GameMode mode, String machineType) {
+        this(mode, machineType, 1, null);
     }
 
     // ──── Constructor general ────
-    private SelectPlayerGUI(GameMode mode, int playerNumber, String player1Type) {
+    private SelectPlayerGUI(GameMode mode, String machineType, int playerNumber, String player1Type) {
         this.selectedMode  = mode;
+        this.machineType   = machineType;
         this.playerNumber  = playerNumber;
         this.player1Type   = player1Type;
 
@@ -158,22 +155,24 @@ public class SelectPlayerGUI extends JFrame {
 
     private void selectPlayer(String type) {
         if (playerNumber == 1 && selectedMode.isMultiplayer()) {
-            // PvP o PvM: mostrar pantalla de selección para Player 2
-            new SelectPlayerGUI(selectedMode, 2, type);
+            // PvP: mostrar pantalla de selección para Player 2
+            // PvM: la máquina no elige personaje, ir directo a nivel
+            if (selectedMode == GameMode.PLAYER_VS_MACHINE) {
+                new LevelSelectGUI(selectedMode, type, null, machineType);
+            } else {
+                new SelectPlayerGUI(selectedMode, machineType, 2, type);
+            }
         } else if (playerNumber == 2) {
-            // Ambos jugadores eligieron — ir a selección de nivel
-            new LevelSelectGUI(selectedMode, player1Type, type);
+            new LevelSelectGUI(selectedMode, player1Type, type, machineType);
         } else {
-            // Single player — ir directo a selección de nivel
-            new LevelSelectGUI(selectedMode, type, null);
+            new LevelSelectGUI(selectedMode, type, null, null);
         }
         dispose();
     }
 
     private void goBack() {
         if (playerNumber == 2) {
-            // Volver a la selección de P1
-            new SelectPlayerGUI(selectedMode);
+            new SelectPlayerGUI(selectedMode, machineType);
         } else {
             new ModeSelectionPanel();
         }

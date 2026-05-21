@@ -1,25 +1,21 @@
 package Dominio;
 
 public class GreenPlayer extends Player {
-	
-	private boolean shieldUse;
 
-	public GreenPlayer(String name, Position initialPosition) {
-		super(name, initialPosition);
-		speed= 1.0;
-		size=1.0;
-		shieldUse=false;
-	}
+    private boolean shieldUsed;
 
-	@Override
-	public void receiveHit() {
-		if(!shieldUse) {
-			shieldUse=true;
-			speed=0.7;
-		}
-		else {
-			die();
-		}
-	}
+    public GreenPlayer(String name, float spawnX, float spawnY) {
+        super(name, spawnX, spawnY, 2.0f, GameConfig.CELL_SIZE - 6f);
+        this.shieldUsed = false;
+    }
 
+    @Override
+    public void receiveHit() {
+        if (!shieldUsed) {
+            shieldUsed = true;
+            speed = 1.4f; // penalización de velocidad tras recibir el golpe
+        } else {
+            die();
+        }
+    }
 }

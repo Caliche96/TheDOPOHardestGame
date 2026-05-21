@@ -1,127 +1,70 @@
 package Dominio;
 
 /**
- * Clase abstracta que representa un enemigo
+ * Clase abstracta que representa un enemigo del juego.
+ *
+ * Al igual que Player, se mueve en píxeles flotantes (x, y).
+ * El MovementPattern maneja la dirección y el rebote contra paredes.
  */
 public abstract class Enemy {
-    protected Position position;
-    protected double speed;
-    protected double size;
+
+    protected float   x;
+    protected float   y;
+    protected float   speed;
+    protected float   size;
     protected boolean active;
     protected MovementPattern movementPattern;
     protected GameBoard board;
 
-    /**
-     * Constructor de la clase Enemy
-     * 
-     * @param initalposition  Posición inicial del enemigo
-     * @param speed           Velocidad del enemigo
-     * @param size            Tamaño del enemigo
-     * @param movementPattern Patrón de movimiento del enemigo
-     */
-    public Enemy(Position initalposition, double speed, double size, MovementPattern movementPattern) {
-        this.position = initalposition;
-        this.speed = speed;
-        this.size = size;
+    public Enemy(float x, float y, float speed, float size, MovementPattern movementPattern) {
+        this.x               = x;
+        this.y               = y;
+        this.speed           = speed;
+        this.size            = size;
         this.movementPattern = movementPattern;
-        this.active = true;
-    }
-    
-    /**
-     * Asigna el tablero al enemigo. Debe llamarse tras cargarlo con LevelLoader
-     * Es necesario para que el patrón de movimiento verifique colisiones
-     * @param board	tablero del nivel actual
-     */
-    public void setBoard(GameBoard board) {
-    	this.board=board;
+        this.active          = true;
     }
 
-    /**
-     * Actualiza la posición del enemigo
-     */
+    public void setBoard(GameBoard board) { this.board = board; }
+
     public void update() {
-        if (active && board !=null) {
-            movementPattern.move(this,board);
+        if (active && board != null) {
+            movementPattern.move(this, board);
         }
     }
 
     /**
-     * Verifica si el jugador colisiona con el enemigo
-     * 
-     * @param player Jugador
-     * @return true si el jugador colisiona con el enemigo, false en caso contrario
+     * Colisión AABB entre este enemigo y un jugador.
      */
     public boolean collides(Player player) {
-        return position.equals(player.getPosition());
+        return x < player.getX() + player.getSize() &&
+               x + size > player.getX()             &&
+               y < player.getY() + player.getSize() &&
+               y + size > player.getY();
     }
 
-    /**
-     * Destruye al enemigo
-     */
-    public void destroy() {
-        active = false;
-    }
+    public void destroy()        { active = false; }
+    public boolean isActive()    { return active; }
 
-    /**
-     * Verifica si el enemigo está activo
-     * 
-     * @return true si el enemigo está activo, false en caso contrario
-     */
-    public boolean isActive() {
-        return active;
-    }
+    public float getX()          { return x; }
+    public float getY()          { return y; }
+    public float getSpeed()      { return speed; }
+    public float getSize()       { return size; }
+    public MovementPattern getMovementPattern() { return movementPattern; }
+    public GameBoard getBoard()  { return board; }
 
-    /**
-     * Obtiene la posición del enemigo
-     * 
-     * @return Posición del enemigo
-     */
+    public void setX(float x)   { this.x = x; }
+    public void setY(float y)   { this.y = y; }
+    public void setSpeed(float s){ this.speed = s; }
+
+    /** @deprecated Usar getX()/getY(). Mantenido por compatibilidad con LevelLoader. */
     public Position getPosition() {
-        return position;
+        return new Position((int)(y / GameConfig.CELL_SIZE), (int)(x / GameConfig.CELL_SIZE));
     }
 
-    /**
-     * Obtiene la velocidad del enemigo
-     * 
-     * @return Velocidad del enemigo
-     */
-    public double getSpeed() {
-        return speed;
-    }
-
-    /**
-     * Obtiene el tamaño del enemigo
-     * 
-     * @return Tamaño del enemigo
-     */
-    public double getSize() {
-        return size;
-    }
-
-    /**
-     * Obtiene el patrón de movimiento del enemigo
-     * 
-     * @return Patrón de movimiento del enemigo
-     */
-    public MovementPattern getMovementPattern() {
-        return movementPattern;
-    }
-
-    /**
-     * Establece la posición del enemigo
-     * 
-     * @param position Nueva posición del enemigo
-     */
-    public void setPosition(Position position) {
-        this.position = position;
-    }
-
-    /**
-     * Establece la velocidad del enemigo
-     * 
-     * @param speed Nueva velocidad del enemigo
-     */
-    public void setSpeed(double speed) {
-        this.speed = speed;
+    /** @deprecated Usar setX/setY. */
+    public void setPosition(Position p) {
+        this.x = p.getColumn() * GameConfig.CELL_SIZE;
+        this.y = p.getRow()    * GameConfig.CELL_SIZE;
     }
 }
