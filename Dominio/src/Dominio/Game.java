@@ -27,28 +27,48 @@ public class Game {
     
     //Metodos Principales
 
+	/**
+	 * Actualiza el estado del juego.
+	 */
     public void update() {
     	state.update(this);
     }
     
+	/**
+	 * Mueve al jugador especificado en la dirección dada.
+	 * @param playerIndex índice del jugador a mover (0 para Player 1, 1 para Player 2 o máquina)
+	 * @param direccion dirección del movimiento
+	 */
     public void movePlayer(int playerIndex, Direction direccion) {
     	state.movePlayer(this, playerIndex, direccion);
     }
     
+	/**
+	 * Pausa el juego.
+	 */
     public void pause() {
     	state.pause(this);
     }
 
+	/**
+	 * Reanuda el juego.
+	 */
     public void resume() {
     	state.resume(this);
     }
-    
+
+	/**
+	 * Finaliza el juego.
+	 */
     public void finishGame() {
     	state.finish(this);
     }
     
-    //-----------METODOS INTERNOS-------
-
+	/**
+	 * Mueve al jugador especificado en la dirección dada (método interno).
+	 * @param playerIndex índice del jugador a mover
+	 * @param direccion dirección del movimiento
+	 */
     public void internalMovePlayer(int playerIndex, Direction direccion) {
     	if (playerIndex < 0 || playerIndex >= players.size()) return;
     	Player player = players.get(playerIndex);
@@ -58,6 +78,9 @@ public class Game {
     
     //Parte de Enemigos
 
+	/**
+	 * Mueve todos los enemigos del nivel.
+	 */
     public void moveEnemies() {
     	for (Enemy enemy: currentLevel.getEnemies()) {
     		enemy.update();
@@ -66,6 +89,9 @@ public class Game {
     
     
     //Colisiones
+	/**
+	 * Verifica las colisiones entre enemigos y jugadores.
+	 */
     public void checkEnemyCollsion() {
 		for (Player player : players) {
 			for(Enemy enemy : currentLevel.getEnemies()) {
@@ -77,7 +103,9 @@ public class Game {
 		
 	}
     
-    
+    /**
+	 * Verifica las colisiones entre monedas y jugadores.
+	 */
 	public void checkCoinCollision() {
 		for (Player player : players) {
 			for (Coin coin : currentLevel.getCoins()) {
@@ -90,6 +118,9 @@ public class Game {
 		}
 	}
 
+	/**
+	 * Verifica las colisiones entre elementos especiales y jugadores.
+	 */
 	public void checkSpecialElements() {
 		for (SpecialElement element : currentLevel.getSpecialElements()) {
 			for (Player player : players) {
@@ -101,6 +132,9 @@ public class Game {
 	}
 	
 	//Colision entre jugadores
+	/**
+	 * Verifica las colisiones entre jugadores.
+	 */
 	public void checkPlayerCollisions() {
 		if (gameMode== GameMode.SINGLE_PLAYER) {
 			return;
@@ -120,6 +154,10 @@ public class Game {
 	}
 	
 	//Zonas Seguras
+	/**
+	 * Verifica si el jugador está en una zona segura.
+	 * @param player jugador a verificar
+	 */
 	public void checkSafeZone(Player player) {
 		if (player.isInSafeZone(currentLevel.getBoard(), GameConfig.CELL_SIZE)) {
 			player.setSpawnPoint(player.getX(), player.getY());
@@ -127,6 +165,9 @@ public class Game {
 	}
 
 	//Victoria
+	/**
+	 * Verifica si todos los jugadores han alcanzado el objetivo.
+	 */
 	public void checkGoal() {
 		if (!currentLevel.allCoinsCollected()) {
 			return;
@@ -159,7 +200,9 @@ public class Game {
 	}
 	
 	//Tiempo
-
+	/**
+	 * Actualiza el temporizador del juego.
+	 */
 	public void updateTimer() {
 		remainingTime --;
 		if (remainingTime <=0) {
@@ -207,7 +250,10 @@ public class Game {
 	
 	
 	//Manejo de los jugadores
-	
+	/**
+	 * Agrega un jugador a la lista de jugadores.
+	 * @param player jugador a agregar
+	 */
 	public void addPlayer(Player player) {
 		players.add(player);
 	}
@@ -226,31 +272,59 @@ public class Game {
 	
 	
 	//CAMBIOS DE ESTADO
+	/**
+	 * Establece el estado actual del juego.
+	 * @param state nuevo estado del juego
+	 */
 	public void setState(GameState state) {
 		this.state=state;
 	}
 	
 	//GETTERS
+	/**
+	 * Obtiene el nivel actual del juego.
+	 * @return nivel actual
+	 */
 	public Level getCurrentLevel() {
 		return currentLevel;
 	}
 	
+	/**
+	 * Obtiene la lista de jugadores.
+	 * @return lista de jugadores
+	 */
 	public List<Player> getPlayers(){
 		return players;
 	}
 	
+	/**
+	 * Obtiene el estado actual del juego.
+	 * @return estado actual
+	 */
 	public GameState getGameState() {
 		return state;
 	}
 
+	/**
+	 * Obtiene el tiempo restante del juego.
+	 * @return tiempo restante
+	 */
 	public int getRemainingTime() {
 		return remainingTime;
 	}
 	
+	/**
+	 * Obtiene el modo de juego actual.
+	 * @return modo de juego actual
+	 */
 	public GameMode getGameMode() {
 		return gameMode;
 	}
 
+	/**
+	 * Establece el tiempo restante del juego.
+	 * @param time nuevo tiempo restante
+	 */
 	public void setRemainingTime(int time) {
 		this.remainingTime = time;
 	}
