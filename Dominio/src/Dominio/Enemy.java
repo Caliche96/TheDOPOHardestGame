@@ -9,6 +9,7 @@ public abstract class Enemy {
     protected double size;
     protected boolean active;
     protected MovementPattern movementPattern;
+    protected GameBoard board;
 
     /**
      * Constructor de la clase Enemy
@@ -25,13 +26,22 @@ public abstract class Enemy {
         this.movementPattern = movementPattern;
         this.active = true;
     }
+    
+    /**
+     * Asigna el tablero al enemigo. Debe llamarse tras cargarlo con LevelLoader
+     * Es necesario para que el patrón de movimiento verifique colisiones
+     * @param board	tablero del nivel actual
+     */
+    public void setBoard(GameBoard board) {
+    	this.board=board;
+    }
 
     /**
      * Actualiza la posición del enemigo
      */
     public void update() {
-        if (active) {
-            movementPattern.move(this);
+        if (active && board !=null) {
+            movementPattern.move(this,board);
         }
     }
 

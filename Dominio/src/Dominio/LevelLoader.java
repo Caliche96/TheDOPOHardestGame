@@ -107,6 +107,13 @@ public class LevelLoader {
         }
 
         level.setDefaultSpawn(defaultSpawn);
+
+        // Asignar el tablero a cada enemigo para que su patrón de movimiento
+        // pueda verificar colisiones con celdas (rebote en paredes, etc.)
+        for (Enemy enemy : level.getEnemies()) {
+            enemy.setBoard(board);
+        }
+
         return level;
     }
 

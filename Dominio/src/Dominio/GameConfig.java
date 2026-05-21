@@ -14,8 +14,16 @@ public class GameConfig {
     public static final int WINDOW_HEIGHT = 500;
     public static final int HUD_HEIGHT    = 50;
 
-    // ── Tiempo por defecto (segundos × 30 FPS) ──
-    public static final int DEFAULT_TIME_LIMIT = 180; // 30 monedas como en la imagen
+    // ── Tiempo por defecto ──
+    /** 1 minuto 30 segundos × 30 FPS = 2700 ticks. */
+    public static final int DEFAULT_TIME_LIMIT = 2700;
+
+    // ── Intervalos de movimiento ──
+    /** Cada cuántos ticks se mueve el jugador (~10 movimientos/segundo). */
+    public static final int PLAYER_MOVE_INTERVAL = 3;
+
+    /** Cada cuántos ticks se mueve cada enemigo (~7.5 movimientos/segundo). */
+    public static final int ENEMY_MOVE_INTERVAL = 4;
 
     // ── FPS del GameLoop ──
     public static final int FPS = 30;
@@ -34,39 +42,7 @@ public class GameConfig {
      *  A = enemigo acelerado         (AcceleratedEnemy)
      *  B = bomba                     (Bomb)
      *  L = fuente de vida            (LifeSource)
-     *
-     * Nivel 1 — replica la imagen del juego original:
-     *   Columnas 0-2   : zona spawn (S) verde izquierda
-     *   Columnas 3-16  : zona walkable ajedrezada con 3 enemigos horizontales
-     *   Columnas 17-19 : zona goal (F) verde derecha
-     *   Filas 0,1,8,9  : vacío/pared arriba y abajo de la zona central
-     */
-    public static final String[] LEVEL_1 = {
-        "#####################",
-        "#####################",
-        "SSS..................FFF",
-        "SSS..................FFF",
-        "SSS...E.......E...E..FFF",
-        "SSS..................FFF",
-        "SSS..................FFF",
-        "SSS..................FFF",
-        "#####################",
-        "#####################"
-    };
-
-    // Mapa corregido con exactamente 20 columnas × 10 filas
-    public static final String[] NIVEL_1 = {
-        "####################",
-        "####################",
-        "SSS.................F",
-        "SSS.................F",
-        "SSS..E.....E....E...F",
-        "SSS.................F",
-        "SSS.................F",
-        "SSS.................F",
-        "####################",
-        "####################"
-    };
-
+     **/
+    
     private GameConfig() {}
 }

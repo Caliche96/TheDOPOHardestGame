@@ -49,14 +49,16 @@ public class LevelSelectGUI extends JFrame {
     // ──── Estado ────
     private final GameMode  selectedMode;
     private final String    selectedPlayer;
+    private final String    selectedPlayer2;
 
     // ──── Componentes ────
     private JPanel backgroundPanel;
     private JButton btnBack;
 
-    public LevelSelectGUI(GameMode mode, String playerType) {
-        this.selectedMode   = mode;
-        this.selectedPlayer = playerType;
+    public LevelSelectGUI(GameMode mode, String playerType, String player2Type) {
+        this.selectedMode    = mode;
+        this.selectedPlayer  = playerType;
+        this.selectedPlayer2 = player2Type;
 
         setTitle("Select Level");
         setSize(WIDTH, HEIGHT);
@@ -143,12 +145,12 @@ public class LevelSelectGUI extends JFrame {
     // ═══════════════════════════════════════
 
     private void selectLevel(int index) {
-        new GamePanel(selectedMode, selectedPlayer, LEVEL_FILES[index]);
+        new GamePanel(selectedMode, selectedPlayer, selectedPlayer2, LEVEL_FILES[index]);
         dispose();
     }
 
     private void goBack() {
-        new SelectPlayerGUI(selectedMode);
+        new SelectPlayerGUI(selectedMode);  // regresa a selección P1
         dispose();
     }
 
@@ -301,6 +303,6 @@ public class LevelSelectGUI extends JFrame {
 
     public static void main(String[] args) {
         SwingUtilities.invokeLater(() ->
-                new LevelSelectGUI(GameMode.SINGLE_PLAYER, "Red"));
+                new LevelSelectGUI(GameMode.SINGLE_PLAYER, "Red", null));
     }
 }

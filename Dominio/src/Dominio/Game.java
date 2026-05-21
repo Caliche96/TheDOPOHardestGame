@@ -308,4 +308,8 @@ public class Game {
 		return gameMode;
 	}
 
+	public void setRemainingTime(int time) {
+		this.remainingTime = time;
+	}
+
 }
