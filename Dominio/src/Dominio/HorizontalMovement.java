@@ -28,6 +28,15 @@ public class HorizontalMovement implements MovementPattern {
         }
     }
 
+    /**
+     * Verifica si el enemigo colisiona con un obstáculo horizontalmente.
+     * @param x coordenada X del enemigo
+     * @param y coordenada Y del enemigo
+     * @param size tamaño del enemigo
+     * @param board tablero del juego
+     * @param cell tamaño de la celda
+     * @return true si hay colisión, false en caso contrario
+     */
     private boolean collidesHorizontal(float x, float y, float size, GameBoard board, int cell) {
         float[] cx = { x, x + size - 1, x, x + size - 1 };
         float[] cy = { y, y, y + size - 1, y + size - 1 };
