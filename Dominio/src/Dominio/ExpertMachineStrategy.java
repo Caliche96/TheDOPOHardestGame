@@ -28,6 +28,12 @@ public class ExpertMachineStrategy implements MachineStrategy {
     private Direction currentDir  = null;
     private float     movedPixels = 0f;
 
+    /**
+     * Decide la dirección a tomar para el jugador máquina.
+     * @param machine el jugador máquina
+     * @param game el juego actual
+     * @return la dirección a tomar o null si no se mueve
+     */
     @Override
     public Direction decideDirection(Player machine, Game game) {
         GameBoard board = game.getCurrentLevel().getBoard();
@@ -59,10 +65,16 @@ public class ExpertMachineStrategy implements MachineStrategy {
         return currentDir;
     }
 
-    // ═══════════════════════════════════════
-    //  SELECCIÓN DE OBJETIVO
-    // ═══════════════════════════════════════
-
+    /**
+     * Encuentra el objetivo para la máquina:
+     * 1. Moneda no recogida más cercana a la máquina y más lejana al humano
+     * 2. Zona SPAWN del Player 1 si no quedan monedas
+     * @param machine jugador máquina
+     * @param game juego actual
+     * @param board tablero de juego
+     * @param cell tamaño de celda en píxeles
+     * @return la posición objetivo o null si no se encuentra ninguno
+     */
     private Position findTarget(Player machine, Game game, GameBoard board, int cell) {
         List<Coin> coins     = game.getCurrentLevel().getCoins();
         Position machineCell = toCell(machine, cell);
@@ -92,6 +104,11 @@ public class ExpertMachineStrategy implements MachineStrategy {
         return findSpawnCell(board);
     }
 
+    /**
+     * Busca la posición de la zona SPAWN en el tablero.
+     * @param board tablero de juego
+     * @return la posición de la zona SPAWN o null si no se encuentra
+     */
     private Position findSpawnCell(GameBoard board) {
         for (int r = 0; r < board.getRows(); r++) {
             for (int c = 0; c < board.getColumns(); c++) {
@@ -103,10 +120,13 @@ public class ExpertMachineStrategy implements MachineStrategy {
         return null;
     }
 
-    // ═══════════════════════════════════════
-    //  BFS
-    // ═══════════════════════════════════════
-
+    /**
+     * BFS para encontrar el camino más corto desde start hasta goal.
+     * @param start posición inicial
+     * @param goal posición objetivo
+     * @param board tablero de juego
+     * @return lista de direcciones para llegar al objetivo o vacía si no se encuentra camino
+     */
     private List<Direction> bfs(Position start, Position goal, GameBoard board) {
         if (start.equals(goal)) return new ArrayList<>();
 
@@ -117,7 +137,7 @@ public class ExpertMachineStrategy implements MachineStrategy {
         parent.put(start, null);
         queue.add(start);
 
-        while (!queue.isEmpty()) {
+        while (!queue.isEmpty()) {      // BFS
             Position current = queue.poll();
             for (Direction d : CARDINAL) {
                 Position next = step(current, d);
@@ -133,6 +153,14 @@ public class ExpertMachineStrategy implements MachineStrategy {
         return new ArrayList<>();
     }
 
+    /**
+     * Reconstruye el camino de direcciones desde start hasta end usando los mapas de parent y directionTo.
+     * @param start posición inicial 
+     * @param end posición final
+     * @param parent mapa de nodos padre para cada posición visitada
+     * @param directionTo mapa de dirección tomada para llegar a cada posición visitada
+     * @return lista de direcciones para llegar desde start hasta end
+     */
     private List<Direction> reconstructPath(Position start, Position end,
             Map<Position, Position> parent, Map<Position, Direction> directionTo) {
         LinkedList<Direction> path = new LinkedList<>();
@@ -144,6 +172,12 @@ public class ExpertMachineStrategy implements MachineStrategy {
         return path;
     }
 
+    /**
+     * Calcula la posición resultante de dar un paso desde pos en la dirección d.
+     * @param pos posición actual 
+     * @param d dirección del paso
+     * @return nueva posición después de dar el paso
+     */
     private Position step(Position pos, Direction d) {
         int r = pos.getRow(), c = pos.getColumn();
         switch (d) {
@@ -155,22 +189,36 @@ public class ExpertMachineStrategy implements MachineStrategy {
         }
     }
 
+    /**
+     * Verifica si la posición es transitable (dentro del tablero y sin paredes).
+     * @param pos posición a verificar 
+     * @param board tablero de juego 
+     * @return true si la posición es transitable, false si es una pared o está fuera del tablero
+     */
     private boolean isWalkable(Position pos, GameBoard board) {
         if (!board.isInside(pos)) return false;
         CellType t = board.getCell(pos.getRow(), pos.getColumn()).getType();
         return t != CellType.WALL && t != CellType.EMPTY;
     }
 
-    // ═══════════════════════════════════════
-    //  UTILIDADES
-    // ═══════════════════════════════════════
-
+    /**
+     * Convierte las coordenadas del jugador a una posición en la cuadrícula.
+     * @param p jugador
+     * @param cell tamaño de cada celda en la cuadrícula
+     * @return posición en la cuadrícula
+     */
     private Position toCell(Player p, int cell) {
         int col = (int)((p.getX() + p.getSize() / 2f) / cell);
         int row = (int)((p.getY() + p.getSize() / 2f) / cell);
         return new Position(row, col);
     }
 
+    /**
+     * Calcula la distancia de Manhattan entre dos posiciones.
+     * @param a primera posición
+     * @param b segunda posición
+     * @return distancia de Manhattan
+     */
     private double manhattan(Position a, Position b) {
         return Math.abs(a.getRow() - b.getRow()) + Math.abs(a.getColumn() - b.getColumn());
     }
