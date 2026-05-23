@@ -16,7 +16,7 @@ public abstract class Player {
 
     // ──── Atributos ────
     protected String name;
-
+    protected String skinType;
     /** Posición en píxeles (esquina superior izquierda del bounding box). */
     protected float x;
     protected float y;
@@ -97,10 +97,13 @@ public abstract class Player {
     }
 
     /**
-     * Verifica si el bounding box del jugador en (testX, testY) colisiona con
-     * alguna celda de tipo WALL o EMPTY en el tablero.
-     * Comprueba las cuatro esquinas del cuadrado.
-     */
+    * Verifica si el bounding box del jugador colisiona con una pared en la posición dada.
+    * @param testX La coordenada X a probar.
+    * @param testY La coordenada Y a probar.
+    * @param board El tablero del juego para verificar las celdas.
+    * @param cellSize El tamaño de las celdas en píxeles para calcular las posiciones de las esquinas.
+    * @return true si hay colisión con una pared, false en caso contrario.
+    */
     private boolean collidesWithWall(float testX, float testY, GameBoard board, int cellSize) {
         float[] cornersX = { testX, testX + size - 1, testX,            testX + size - 1 };
         float[] cornersY = { testY, testY,             testY + size - 1, testY + size - 1 };
@@ -125,26 +128,58 @@ public abstract class Player {
 
     // ──── Vidas y muertes ────
 
+    /**
+     * Hace que el jugador muera y reinicia su posición.
+     */
     public void die() {
         deaths++;
         respawn();
     }
 
+    /**
+     * Reinicia la posición del jugador.
+     */
     public void respawn() {
         x     = spawnX;
         y     = spawnY;
         alive = true;
     }
 
-    public void addLife() { lives++; }
+    /**
+     * Añade una vida al jugador.
+     */
+    public void addLife() { 
+        lives++; 
+    }
+
+    /**
+     * Activa un escudo temporal en el jugador.
+     * Cualquier jugador puede tener escudo — ya sea por ser GreenPlayer
+     * o por recoger una LifeSource.
+     * Por defecto no hace nada; GreenPlayer lo sobreescribe.
+     * RedPlayer y BluePlayer tienen su propia implementación básica.
+     */
+    public void activateShield() { }
 
     // ──── Monedas ────
 
-    public void addCoin()   { collectedCoins++; }
+    /* Añade una moneda al contador del jugador. Se llama desde Game cuando el jugador
+     * recoge una moneda en el tablero. */
+    public void addCoin(){ 
+        collectedCoins++; 
+    }
+
+    /**
+     * Reinicia el contador de monedas del jugador.
+     */
     public void resetCoins(){ collectedCoins = 0; }
 
     // ──── Spawn ────
-
+    /**
+    * Establece un nuevo punto de spawn para el jugador.
+    * @param spawnX La coordenada X del nuevo punto de spawn en píxeles.
+    * @param spawnY La coordenada Y del nuevo punto de spawn en píxeles.
+    */
     public void setSpawnPoint(float spawnX, float spawnY) {
         this.spawnX = spawnX;
         this.spawnY = spawnY;
@@ -153,7 +188,9 @@ public abstract class Player {
     // ──── Colisiones entre jugadores ────
 
     /**
-     * Verifica colisión AABB entre este jugador y otro.
+     * Verifica si el bounding box de este jugador colisiona con el de otro jugador.
+     * @param other el otro jugador a comparar
+     * @return true si hay colisión, false en caso contrario
      */
     public boolean collides(Player other) {
         return x < other.x + other.size &&
@@ -163,26 +200,41 @@ public abstract class Player {
     }
 
     /**
-     * Verifica si el centro del jugador está dentro de una celda de tipo goal.
+     * Verifica si el centro del jugador está en la celda de meta.
+     * @param board El tablero del juego para verificar la celda actual.
+     * @param cellSize El tamaño de las celdas en píxeles para calcular la posición en el tablero.
+     * @return true si el centro del jugador está en la celda de meta, false en caso contrario.
      */
     public boolean isInGoal(GameBoard board, int cellSize) {
         return getCellType(board, cellSize) == CellType.GOAL;
     }
 
+    /**
+     * Verifica si el centro del jugador está en la zona de spawn.
+     * @param board El tablero del juego para verificar la celda actual.
+     * @param cellSize El tamaño de las celdas en píxeles para calcular la posición en el tablero.
+     * @return true si el centro del jugador está en la zona de spawn, false en caso contrario.
+     */
     public boolean isInSpawnZone(GameBoard board, int cellSize) {
         return getCellType(board, cellSize) == CellType.SPAWN_ZONE;
     }
 
     /**
-     * Verifica si el centro del jugador está en una zona segura.
+     * Verifica si el centro del jugador está en la zona segura.
+     * @param board El tablero del juego para verificar la celda actual.
+     * @param cellSize El tamaño de las celdas en píxeles para calcular la posición en el tablero.
+     * @return true si el centro del jugador está en la zona segura, false en caso contrario.
      */
     public boolean isInSafeZone(GameBoard board, int cellSize) {
         return getCellType(board, cellSize) == CellType.SAFE_ZONE;
     }
 
     /**
-     * Devuelve el tipo de celda donde está el centro del jugador.
-     */
+    * Obtiene el tipo de celda en la que se encuentra el centro del jugador.
+    * @param board El tablero del juego para verificar la celda actual.
+    * @param cellSize El tamaño de las celdas en píxeles para calcular la posición en el tablero.
+    * @return El tipo de celda en la que se encuentra el centro del jugador.
+    */
     public CellType getCellType(GameBoard board, int cellSize) {
         int col = (int)((x + size / 2) / cellSize);
         int row = (int)((y + size / 2) / cellSize);
@@ -193,32 +245,205 @@ public abstract class Player {
     }
 
     // ──── Habilidad especial ────
+    /**
+     * Recibe un golpe y actualiza el estado del jugador.
+     */
     public abstract void receiveHit();
 
+    /**
+     * @return El tipo de jugador.
+     */
+    public abstract String getPlayerType();
+
+    /**
+     * Actualización por tick — cada subclase puede sobreescribir para
+     * manejar temporizadores internos (ej. invencibilidad de GreenPlayer).
+     * Por defecto no hace nada.
+     */
+    public void tick() { }
+
+    /**
+     * @return true si el jugador está en frames de invencibilidad.
+     * Por defecto false; GreenPlayer lo sobreescribe.
+     */
+    public boolean isInvincible(){ 
+        return false; 
+    }
+
+    /**
+     * @return true si el escudo especial está disponible.
+     * Por defecto false; GreenPlayer lo sobreescribe.
+     */
+    public boolean isShieldActive() {
+        return false; 
+    }
+
     // ──── Getters ────
-    public String getName()          { return name; }
-    public float  getX()             { return x; }
-    public float  getY()             { return y; }
-    public float  getSpeed()         { return speed; }
-    public float  getSize()          { return size; }
-    public int    getDeaths()        { return deaths; }
-    public int    getCollectedCoins(){ return collectedCoins; }
-    public int    getLives()         { return lives; }
-    public boolean isAlive()         { return alive; }
-    public Color  getBorderColor()   { return borderColor; }
-    public Color  getBodyColor()     { return bodyColor; }
+    /**
+     *  Obtiene el nombre del jugador.
+     * @return El nombre del jugador.
+     */
+    public String getName(){ 
+        return name; 
+    }
+
+    /**
+     * Obtiene la posición X del jugador en píxeles.
+     * @return La posición X del jugador en píxeles.
+     */
+    public float getX(){ 
+        return x; 
+    }
+
+    /**
+     * Obtiene la posición Y del jugador en píxeles.
+     * @return La posición Y del jugador en píxeles.
+     */
+    public float getY(){ 
+        return y; 
+    }
+
+    /**
+     * Obtiene la velocidad del jugador.
+     * @return La velocidad del jugador.
+     */
+    public float getSpeed(){ 
+        return speed; 
+    }
+
+    /**
+     * Obtiene el tamaño del jugador.
+     * @return El tamaño del jugador.
+     */
+    public float getSize(){ 
+        return size; 
+    }
+
+    /**
+     * Obtiene el número de muertes del jugador.
+     * @return El número de muertes del jugador.
+     */
+    public int getDeaths(){ 
+        return deaths; 
+    }
+
+    /**
+     * Obtiene el número de monedas recolectadas por el jugador.
+     * @return El número de monedas recolectadas por el jugador.
+     */
+    public int getCollectedCoins(){ 
+        return collectedCoins; 
+    }
+
+    /**
+     * Obtiene el número de vidas del jugador.
+     * @return El número de vidas del jugador.
+     */
+    public int getLives(){ 
+        return lives; 
+    }
+
+    /**
+    * Verifica si el jugador está vivo.
+    * @return true si el jugador está vivo, false en caso contrario.
+    */
+    public boolean isAlive(){ 
+        return alive; 
+    }
+
+    /**
+     * Obtiene el color del borde del jugador.
+     * @return El color del borde del jugador.
+     */
+    public Color getBorderColor(){ 
+        return borderColor; 
+    }
+
+    /**
+     * Obtiene el color del cuerpo del jugador.
+     * @return El color del cuerpo del jugador.
+     */
+    public Color  getBodyColor() {
+        return bodyColor;
+    }
 
     // ──── Setters ────
-    public void setBorderColor(Color c)    { this.borderColor = c; }
-    public void setBodyColor(Color c)      { this.bodyColor = c; }
-    public void setX(float x)             { this.x = x; }
-    public void setY(float y)             { this.y = y; }
-    public void setDeaths(int d)          { this.deaths = d; }
-    public void setCollectedCoins(int c)  { this.collectedCoins = c; }
-
-    // ──── Compatibilidad con código existente ────
-    /** @deprecated Usar getX() / getY() para movimiento en píxeles. */
-    public Position getPosition() {
-        return new Position((int)(y / GameConfig.CELL_SIZE), (int)(x / GameConfig.CELL_SIZE));
+    /**
+     * Establece el color del borde del jugador.
+     * @param c El color del borde del jugador.
+     */
+    public void setBorderColor(Color c){ 
+        this.borderColor = c; 
     }
+
+    /**
+     * Establece el color del cuerpo del jugador.
+     * @param c El color del cuerpo del jugador.
+     */
+    public void setBodyColor(Color c){ 
+        this.bodyColor = c; 
+    }
+
+    /**
+     * Establece la posición X del jugador en píxeles.
+     * @param x La posición X del jugador en píxeles.
+     */
+    public void setX(float x){ 
+        this.x = x; 
+    }
+
+    /**
+     * Establece la posición Y del jugador en píxeles.
+     * @param y La posición Y del jugador en píxeles.
+     */
+    public void setY(float y){ 
+        this.y = y; 
+    }
+    /**
+     * Establece el número de muertes del jugador.
+     * @param d El número de muertes del jugador.
+     */
+    public void setDeaths(int d){ 
+        this.deaths = d; 
+    }
+
+    /**
+    * Establece el número de monedas recolectadas por el jugador.
+    * @param c El número de monedas recolectadas por el jugador.
+    */
+    public void setCollectedCoins(int c){ 
+        this.collectedCoins = c; 
+    }
+
+    /**
+     * Establece la velocidad del jugador.
+     * @param vel La velocidad del jugador.
+     */
+    public void setSpeed(float vel){ 
+        this.speed=vel;
+    }
+
+    /**
+     * Establece el tamaño del jugador.
+     * @param tam El tamaño del jugador.
+     */
+    public void setSize(float tam){
+        this.size=tam;
+    }
+
+    /**
+     * Establece el tipo de piel del jugador.
+     * @param newType El nuevo tipo de piel del jugador.
+     */
+	public void setSkinType(String newType) {
+		this.skinType=newType;
+	}
+	
+    /**
+     * Obtiene el tipo de piel del jugador.
+     * @return El tipo de piel del jugador.
+     */
+	public String getSkinType() {
+		return skinType;
+	}
 }

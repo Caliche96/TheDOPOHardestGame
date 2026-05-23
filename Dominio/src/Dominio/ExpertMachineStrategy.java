@@ -20,7 +20,7 @@ public class ExpertMachineStrategy implements MachineStrategy {
         Direction.UP, Direction.DOWN, Direction.LEFT, Direction.RIGHT
     };
 
-    // ── Camino BFS ──
+    //──Camino BFS──
     private List<Direction> currentPath  = new ArrayList<>();
     private Position        lastTarget   = null;
 
@@ -44,7 +44,7 @@ public class ExpertMachineStrategy implements MachineStrategy {
 
         if (target == null) return null;
 
-        // Recalcular BFS si cambió el objetivo
+        //Recalcular BFS si cambió el objetivo
         if (!target.equals(lastTarget) || currentPath.isEmpty() && currentDir == null) {
             currentPath  = bfs(machineCell, target, board);
             lastTarget   = target;

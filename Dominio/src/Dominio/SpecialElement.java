@@ -4,15 +4,27 @@ public abstract class SpecialElement {
 	protected Position position;
 	protected boolean active;
 	
+	/**
+	 * Crea un elemento especial.
+	 * @param position La posición del elemento.
+	 */
 	public SpecialElement(Position position) {
 		this.position=position;
 		this.active=true;
 	}
 	
-	//Efecto del elemento
+	/**
+	 * Aplica el efecto del elemento especial al jugador.
+	 * @param game El juego.
+	 * @param player El jugador.
+	 */
 	public abstract void applyEffect(Game game, Player player);
 	
-	//Colisiones
+	/**
+	 * Verifica si el elemento especial colisiona con el jugador.
+	 * @param player El jugador.
+	 * @return true si colisiona, false en caso contrario.
+	 */
 	public boolean collides(Player player) {
 		float ex = position.getColumn() * GameConfig.CELL_SIZE;
 		float ey = position.getRow()    * GameConfig.CELL_SIZE;
@@ -23,22 +35,50 @@ public abstract class SpecialElement {
 		       player.getY() + player.getSize() > ey;
 	}
 	
-	//Estado
+	/**
+	 * Desactiva el elemento especial.
+	 */
 	public void deactivated() {
 		active=false;
 	}
 
+	/**
+	 * Consume el elemento especial.
+	 */
 	public void consume() {
 		active=false;
 	}
 	
+	/**
+	 * Verifica si el elemento especial está activo.
+	 * @return true si está activo, false en caso contrario.
+	 */
 	public boolean isActive() {
 		return active;
 	}
 	
-	//Getters
+	/**
+	 * Obtiene la posición del elemento especial.
+	 * @return La posición del elemento.
+	 */
 	public Position getPosition() {
 		return position;
+	}
+
+	/**
+	 * Verifica si el elemento especial es una bomba.
+	 * @return true si es una bomba, false en caso contrario.
+	 */
+	public boolean isBomb() {
+		return false;
+	}
+
+	/**
+	 * Verifica si el elemento especial es una fuente de vida.
+	 * @return true si es una fuente de vida, false en caso contrario.
+	 */
+	public boolean isLifeSource() {
+		return false;
 	}
 	
 	

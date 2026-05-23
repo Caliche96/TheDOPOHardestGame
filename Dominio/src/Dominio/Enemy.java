@@ -17,12 +17,12 @@ public abstract class Enemy {
     protected GameBoard board;
 
     /**
-     * Constructor de la clase Enemy.
-     * @param x coordenada x inicial
-     * @param y coordenada y inicial
-     * @param speed velocidad de movimiento
-     * @param size tamaño del enemigo
-     * @param movementPattern patrón de movimiento
+     * Crea un nuevo enemigo.
+     * @param x Coordenada X de la posición inicial.
+     * @param y Coordenada Y de la posición inicial.
+     * @param speed Velocidad del enemigo.
+     * @param size Tamaño del enemigo.
+     * @param movementPattern Patrón de movimiento del enemigo.
      */
     public Enemy(float x, float y, float speed, float size, MovementPattern movementPattern) {
         this.x               = x;
@@ -33,15 +33,16 @@ public abstract class Enemy {
         this.active          = true;
     }
 
-
     /**
-     * Establece el tablero de juego para este enemigo.
-     * @param board el tablero de juego
+     * Establece el tablero de juego para el enemigo.
+     * @param board Tablero de juego.
      */
-    public void setBoard(GameBoard board) { this.board = board; }
+    public void setBoard(GameBoard board){ 
+        this.board = board; 
+    }
 
     /**
-     * Actualiza el estado del enemigo.
+     * Actualiza el estado del enemigo en cada tick.
      */
     public void update() {
         if (active && board != null) {
@@ -50,7 +51,7 @@ public abstract class Enemy {
     }
 
     /**
-     *Colisión AABB entre este enemigo y un jugador.
+     * Colisión AABB entre este enemigo y un jugador.
      */
     public boolean collides(Player player) {
         return x < player.getX() + player.getSize() &&
@@ -60,31 +61,31 @@ public abstract class Enemy {
     }
 
     /**
-     *Destruye el enemigo.
+     * Destruye el enemigo.
      */
     public void destroy(){ 
         active = false; 
     }
-        
-     /**
-      * Indica si el enemigo está activo.
-      * @return
-      */
-     public boolean isActive(){ 
+
+    /**
+     * Verifica si el enemigo está activo.
+     * @return true si el enemigo está activo, false en caso contrario.
+     */
+    public boolean isActive(){ 
         return active; 
     }
 
-     /**
-      * Obtiene la coordenada x del enemigo.
-      * @return
-      */
+    /**
+     * Obtiene la coordenada X del enemigo.
+     * @return La coordenada X del enemigo.
+     */
     public float getX(){ 
         return x; 
     }
 
     /**
-     * Obtiene la coordenada y del enemigo.
-     * @return
+     * Obtiene la coordenada Y del enemigo.
+     * @return La coordenada Y del enemigo.
      */
     public float getY(){ 
         return y; 
@@ -92,68 +93,58 @@ public abstract class Enemy {
 
     /**
      * Obtiene la velocidad del enemigo.
-     * @return
+     * @return La velocidad del enemigo.
      */
-    public float getSpeed(){
+    public float getSpeed(){ 
         return speed; 
     }
 
     /**
      * Obtiene el tamaño del enemigo.
-     * @return
+     * @return El tamaño del enemigo.
      */
     public float getSize(){
-        return size;
+        return size; 
     }
 
     /**
      * Obtiene el patrón de movimiento del enemigo.
-     * @return
+     * @return El patrón de movimiento del enemigo.
      */
-    public MovementPattern getMovementPattern(){
+    public MovementPattern getMovementPattern(){ 
         return movementPattern; 
     }
 
     /**
-     * Obtiene el tablero de juego para este enemigo.
-     * @return
+     * Obtiene el tablero de juego para el enemigo.
+     * @return El tablero de juego para el enemigo.
      */
-    public GameBoard getBoard(){
-        return board;
+    public GameBoard getBoard(){ 
+        return board; 
     }
 
     /**
-     * Establece la coordenada x del enemigo.
-     * @param x
+     * Establece la coordenada X del enemigo.
+     * @param x La coordenada X del enemigo.
      */
-    public void setX(float x){
-        this.x = x;
-    }
-
-    /**
-     * Establece la coordenada y del enemigo.
-     * @param y
-     */
-    public void setY(float y){
-        this.y = y;
+    public void setX(float x){ 
+        this.x = x; 
     }
     
     /**
+     * Establece la coordenada Y del enemigo.
+     * @param y La coordenada Y del enemigo.
+     */
+    public void setY(float y){ 
+        this.y = y; 
+    }
+
+    /**
      * Establece la velocidad del enemigo.
-     * @param s
+     * @param s La velocidad del enemigo.
      */
     public void setSpeed(float s){
-        this.speed = s;
+        this.speed = s; 
     }
-
-    /** @deprecated Usar getX()/getY(). Mantenido por compatibilidad con LevelLoader. */
-    public Position getPosition() {
-        return new Position((int)(y / GameConfig.CELL_SIZE), (int)(x / GameConfig.CELL_SIZE));
-    }
-
-    /** @deprecated Usar setX/setY. */
-    public void setPosition(Position p) {
-        this.x = p.getColumn() * GameConfig.CELL_SIZE;
-        this.y = p.getRow()    * GameConfig.CELL_SIZE;
-    }
+    
 }

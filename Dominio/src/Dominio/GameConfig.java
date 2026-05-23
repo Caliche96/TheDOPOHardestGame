@@ -40,6 +40,7 @@ public class GameConfig {
      *  E = enemigo horizontal básico (BasicBluePoint)
      *  V = enemigo vertical          (VerticalSlider)
      *  A = enemigo acelerado         (AcceleratedEnemy)
+     *  P = enemigo patrulla          (PatrolBluePoint)
      *  B = bomba                     (Bomb)
      *  L = fuente de vida            (LifeSource)
      **/

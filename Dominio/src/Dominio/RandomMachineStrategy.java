@@ -26,6 +26,12 @@ public class RandomMachineStrategy implements MachineStrategy {
     private int tickCount = 0;
     private Direction currentDirection = Direction.RIGHT;
 
+    /**
+     * Decide la dirección en la que se moverá el jugador máquina.
+     * @param machine El jugador máquina.
+     * @param game El juego.
+     * @return La dirección decidida.
+     */
     @Override
     public Direction decideDirection(Player machine, Game game) {
         tickCount++;
@@ -40,8 +46,10 @@ public class RandomMachineStrategy implements MachineStrategy {
     }
 
     /**
-     * Elige una dirección aleatoria entre las que no producen colisión inmediata.
-     * Si todas chocan, devuelve una al azar de todas formas.
+     * Elige una dirección al azar entre las que no causen colisión con paredes.
+     * @param machine El jugador máquina.
+     * @param game El juego.
+     * @return Una dirección válida al azar. Si no hay ninguna, devuelve una dirección al azar sin validar (puede chocar).
      */
     private Direction pickRandomValidDirection(Player machine, Game game) {
         GameBoard board = game.getCurrentLevel().getBoard();
@@ -59,6 +67,12 @@ public class RandomMachineStrategy implements MachineStrategy {
         return valid.get(random.nextInt(valid.size()));
     }
 
+    /**
+     * Simula el movimiento del jugador en la dirección especificada.
+     * @param p El jugador.
+     * @param d La dirección.
+     * @return Las coordenadas después del movimiento.
+     */
     private float[] simulateMove(Player p, Direction d) {
         float speed = p.getSpeed() * 0.707f; // normalizado
         float dx = 0, dy = 0;
@@ -75,6 +89,15 @@ public class RandomMachineStrategy implements MachineStrategy {
         return new float[]{ p.getX() + dx, p.getY() + dy };
     }
 
+    /**
+     * Verifica si el jugador colisionaría con una pared en las coordenadas especificadas.
+     * @param x La coordenada X.
+     * @param y La coordenada Y.
+     * @param size El tamaño del jugador.
+     * @param board El tablero del juego.
+     * @param cell El tamaño de la celda.
+     * @return true si el jugador colisionaría, false en caso contrario.
+     */
     private boolean wouldCollide(float x, float y, float size, GameBoard board, int cell) {
         if (x < 0 || y < 0) return true;
         float[] cx = { x, x + size - 1, x,          x + size - 1 };

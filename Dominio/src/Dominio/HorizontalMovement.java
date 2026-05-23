@@ -9,10 +9,18 @@ public class HorizontalMovement implements MovementPattern {
 
     private float direction; // 1.0 = derecha, -1.0 = izquierda
 
+    /**
+     * Constructor de la clase HorizontalMovement.
+     */
     public HorizontalMovement() {
         direction = 1f;
     }
 
+    /**
+     * Mueve el enemigo según el patrón de movimiento horizontal.
+     * @param enemy El enemigo a mover.
+     * @param board El tablero del juego.
+     */
     @Override
     public void move(Enemy enemy, GameBoard board) {
         int cell = GameConfig.CELL_SIZE;

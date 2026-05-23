@@ -110,11 +110,11 @@ public class ModeSelectionPanel extends JFrame {
         backgroundPanel.add(btnPlayerVsPlayer);
 
         // ── Descripciones debajo de cada botón ──
-        addDescription("Single player mode — collect coins and reach the goal!",
+        addDescription("Single player mode — Recolecta todas las monedas",
                 btnX, startY + btnHeight, btnWidth);
-        addDescription("Play against the machine — random or expert AI",
+        addDescription("Juega contra la máquina — random or expert AI",
                 btnX, startY + btnHeight + gap + btnHeight, btnWidth);
-        addDescription("Two players — compete head to head!",
+        addDescription("2 Players — competir con tu compañero",
                 btnX, startY + 2 * (btnHeight + gap) + btnHeight, btnWidth);
 
     }
@@ -263,13 +263,5 @@ public class ModeSelectionPanel extends JFrame {
         lbl.setForeground(new Color(50, 50, 90, 180));
         lbl.setBounds(x, y + 1, width, 16);
         backgroundPanel.add(lbl);
-    }
-
-    // ═══════════════════════════════════════
-    //  MAIN (para prueba independiente)
-    // ═══════════════════════════════════════
-
-    public static void main(String[] args) {
-        SwingUtilities.invokeLater(() -> new ModeSelectionPanel());
     }
 }

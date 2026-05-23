@@ -1,60 +1,53 @@
 package Presentation;
 
-import Dominio.*;
+import Dominio.Game;
+import Dominio.GameException;
+import Dominio.GameMode;
 
 import javax.swing.*;
+import javax.imageio.ImageIO;
 import java.awt.*;
 import java.awt.event.*;
+import java.awt.image.BufferedImage;
+import java.io.File;
+import java.io.IOException;
 import java.util.List;
 
 /**
  * Pantalla principal de juego.
- * Flujo: LevelSelectGUI → GamePanel
- *
- * Contiene:
- *  - HUD (50px arriba): MENU | nivel/monedas | DEATHS
- *  - Tablero centrado (20×10 celdas de 26px = 520×260px)
- *  - GameLoop a 30 FPS via javax.swing.Timer
- *  - Input: Player1 WASD + flechas | Player2 flechas
+ * Única clase de dominio accedida: Game (fachada).
  */
 public class GamePanel extends JFrame {
 
     // ──── Constantes de layout ────
-    private static final int WINDOW_W  = 600;
-    private static final int WINDOW_H  = 500;
-    private static final int HUD_H     = 50;
-    private static final int CELL      = 26;          // px por celda
-    private static final int FPS       = 30;
-    private static final int TICK_MS   = 1000 / FPS;
+    private static final int WINDOW_W = 600;
+    private static final int WINDOW_H = 500;
+    private static final int HUD_H    = 50;
+    private static final int CELL     = 26;
+    private static final int FPS      = 30;
+    private static final int TICK_MS  = 1000 / FPS;
 
-    // ──── Colores (fieles a la imagen) ────
-    private static final Color COLOR_BG         = new Color(106, 140, 224);  // azul lavanda
-    private static final Color COLOR_SPAWN      = new Color(144, 238, 144);  // verde claro
-    private static final Color COLOR_GOAL       = new Color(144, 238, 144);  // verde claro
-    private static final Color COLOR_WALKABLE_A = new Color(220, 225, 240);  // ajedrez claro
-    private static final Color COLOR_WALKABLE_B = new Color(200, 208, 230);  // ajedrez oscuro
-    private static final Color COLOR_SAFE       = new Color(180, 230, 180);
+    // ──── Colores ────
+    private static final Color COLOR_BG         = new Color(106, 140, 224);
+    private static final Color COLOR_SPAWN      = new Color(144, 238, 144);
+    private static final Color COLOR_GOAL       = new Color(144, 238, 144);
+    private static final Color COLOR_WALKABLE_A = new Color(220, 225, 240);
+    private static final Color COLOR_WALKABLE_B = new Color(200, 208, 230);
+    private static final Color COLOR_SAFE       = new Color(180, 230, 180);  // zona segura intermedia
     private static final Color COLOR_BORDER     = Color.BLACK;
     private static final Color COLOR_HUD_BG     = Color.BLACK;
     private static final Color COLOR_HUD_TEXT   = Color.WHITE;
-    private static final Color COLOR_PLAYER_1   = new Color(210, 30, 30);    // rojo
-    private static final Color COLOR_PLAYER_2   = new Color(30, 100, 210);   // azul
-    private static final Color COLOR_ENEMY      = new Color(20, 20, 140);    // azul oscuro
+    private static final Color COLOR_PLAYER_1   = new Color(210, 30, 30);
+    private static final Color COLOR_PLAYER_2   = new Color(30, 100, 210);
+    private static final Color COLOR_ENEMY      = new Color(20, 20, 140);
 
-    // ──── Estado del juego ────
-    private Game            game = null;
-    private final GameMode  gameMode;
-    private final String    playerType;
-    private final String    player2Type;   // null en Single Player
-    private final String    machineType;   // "Random" o "Expert", solo en PvM
-    private final String    levelFile;
-    private       int       totalCoins;
+    // ──── Única referencia al dominio ────
+    private Game game;
 
-    // ──── Temporizadores individuales (ticks desde que empezó el nivel) ────
-    private int p1Timer = 0;
-    private int p2Timer = 0;
-    private boolean p1Finished = false;
-    private boolean p2Finished = false;
+    // ──── Metadatos de presentación ────
+    private final GameMode gameMode;
+    private final String   machineType;
+    private       int      totalCoins;
 
     // ──── GameLoop ────
     private Timer gameLoop;
@@ -65,49 +58,86 @@ public class GamePanel extends JFrame {
     // ──── Panel de dibujo ────
     private DrawPanel drawPanel;
 
-    // ──── Offset para centrar el tablero ────
+    // ──── Offset del tablero ────
     private int boardOffsetX;
     private int boardOffsetY;
 
-    // ──── Menú de archivo (MENU en HUD) ────
-    private JButton  btnMenu;
+    // ──── Menú ────
+    private JButton    btnMenu;
     private JPopupMenu popupMenu;
 
-    // ──── Carpeta de guardados ────
     private static final String SAVES_DIR = "saves";
+    private int enemyTickCounter = 0;
 
-    // ──── Contadores de tick para controlar velocidad ────
-    private int playerTickCounter = 0;
-    private int enemyTickCounter  = 0;
+    // ──── Imágenes de elementos especiales ────
+    private BufferedImage imgBomb;
+    private BufferedImage imgLifeSource;
+    private BufferedImage imgSkinCoin;
 
-    public GamePanel(GameMode mode, String playerType, String player2Type, String machineType, String levelFile) {
+    // ══════════════════════════════════════════════
+    //  CONSTRUCTOR — juego nuevo
+    // ══════════════════════════════════════════════
+
+    /**
+     * Crea un nuevo panel de juego.
+     * @param mode Modo de juego.
+     * @param playerType Tipo de jugador 1.
+     * @param borderColor1 Color del borde del jugador 1.
+     * @param player2Type Tipo de jugador 2.
+     * @param borderColor2 Color del borde del jugador 2.
+     * @param machineType Tipo de máquina.
+     * @param levelFile Ruta al archivo del nivel.
+     */
+    public GamePanel(GameMode mode, String playerType, Color borderColor1,
+                     String player2Type, Color borderColor2,
+                     String machineType, String levelFile) {
         this.gameMode    = mode;
-        this.playerType  = playerType;
-        this.player2Type = player2Type;
         this.machineType = machineType;
-        this.levelFile   = levelFile;
 
-        // ── Cargar nivel ──
-        Level level = LevelLoader.load(levelFile, "Nivel 1");
-        if (level == null) {
-            JOptionPane.showMessageDialog(null, "No se pudo cargar el nivel: " + levelFile);
+        try {
+            this.game = Game.create(levelFile, "Nivel", mode);
+        } catch (GameException ex) {
+            JOptionPane.showMessageDialog(null, ex.getMessage(),
+                    "Error al cargar nivel", JOptionPane.ERROR_MESSAGE);
             dispose();
             return;
         }
 
-        this.totalCoins = level.getCoins().size();
+        game.setupPlayers(playerType, borderColor1, player2Type, borderColor2, machineType);
+        initUI();
+    }
 
-        // ── Calcular offset para centrar el tablero ──
-        int boardW = level.getBoard().getColumns() * CELL;
-        int boardH = level.getBoard().getRows()    * CELL;
-        boardOffsetX = (WINDOW_W - boardW) / 2;
-        boardOffsetY = HUD_H + (WINDOW_H - HUD_H - boardH) / 2;
+    // ══════════════════════════════════════════════
+    //  CONSTRUCTOR — juego restaurado desde save
+    // ══════════════════════════════════════════════
 
-        // ── Crear juego y jugadores ──
-        this.game = new Game(level, mode);
-        setupPlayers(level);
+    /**
+     * Crea un nuevo panel de juego a partir de un juego restaurado.
+     * @param restoredGame El juego restaurado.
+     */
+    public GamePanel(Game restoredGame) {
+        this.game        = restoredGame;
+        this.gameMode    = restoredGame.getGameMode();
+        this.machineType = null;
+        initUI();
+    }
 
-        // ── Ventana ──
+    // ══════════════════════════════════════════════
+    //  INICIALIZACIÓN COMÚN
+    // ══════════════════════════════════════════════
+
+    /**
+     * Inicializa la interfaz de usuario.
+     */
+    private void initUI() {
+        this.totalCoins = game.getTotalCoins();
+        int boardW      = game.getBoardColumns() * CELL;
+        int boardH      = game.getBoardRows()    * CELL;
+        boardOffsetX    = (WINDOW_W - boardW) / 2;
+        boardOffsetY    = HUD_H + (WINDOW_H - HUD_H - boardH) / 2;
+
+        loadSpecialElementImages();
+
         setTitle("The DOPO Hardest Game");
         setSize(WINDOW_W, WINDOW_H);
         setLocationRelativeTo(null);
@@ -116,73 +146,52 @@ public class GamePanel extends JFrame {
 
         prepareElements();
         prepareActions();
-        startGameLoop();
-
         setVisible(true);
+        startGameLoop();
+        SwingUtilities.invokeLater(() -> drawPanel.requestFocusInWindow());
     }
 
-    // ═══════════════════════════════════════
-    //  SETUP JUGADORES
-    // ═══════════════════════════════════════
+    // ══════════════════════════════════════════════
+    //  IMÁGENES
+    // ══════════════════════════════════════════════
 
-    private void setupPlayers(Level level) {
-        int cell = GameConfig.CELL_SIZE;
-        float playerSize = cell - 6f;
-        float offset = (cell - playerSize) / 2f;
+    /**
+     * Carga las imágenes de los elementos especiales desde la carpeta recursos/.
+     * Si un archivo no existe o falla, el campo queda null y drawSpecialElements
+     * usa el renderizado de texto como fallback.
+     */
+    private void loadSpecialElementImages() {
+        imgBomb       = loadImage("recursos/bomb.png");
+        imgLifeSource = loadImage("recursos/lifesource.png");
+        imgSkinCoin   = loadImage("recursos/skinCoin.png");
+    }
 
-        Position spawn1 = level.getDefaultSpawn();
-        if (spawn1 == null) spawn1 = new Position(0, 0);
-        float p1x = spawn1.getColumn() * cell + offset;
-        float p1y = spawn1.getRow()    * cell + offset;
-
-        Player p1 = createPlayer(playerType, "Player 1", p1x, p1y);
-        game.addPlayer(p1);
-
-        if (gameMode.isMultiplayer()) {
-            Position spawn2 = findGoalSpawn(level.getBoard(), spawn1);
-            float p2x = spawn2.getColumn() * cell + offset;
-            float p2y = spawn2.getRow()    * cell + offset;
-
-            if (gameMode == GameMode.PLAYER_VS_MACHINE) {
-                MachineStrategy strategy = "Expert".equals(machineType)
-                        ? new ExpertMachineStrategy()
-                        : new RandomMachineStrategy();
-                game.addPlayer(new MachinePlayer("Machine", p2x, p2y, strategy));
-            } else {
-                String p2Type = (player2Type != null) ? player2Type : "Red";
-                game.addPlayer(createPlayer(p2Type, "Player 2", p2x, p2y));
-            }
+    /**
+     * Carga una imagen desde la ruta especificada.
+     * @param path Ruta al archivo de imagen.
+     * @return La imagen cargada o null si falla.
+     */
+    private BufferedImage loadImage(String path) {
+        try {
+            return ImageIO.read(new File(path));
+        } catch (IOException e) {
+            System.err.println("GamePanel: no se pudo cargar imagen " + path);
+            return null;
         }
     }
 
-    private Position findGoalSpawn(GameBoard board, Position p1Spawn) {
-        int targetRow = p1Spawn.getRow();
-        for (int col = board.getColumns() - 1; col >= 0; col--) {
-            if (board.getCell(targetRow, col).getType() == CellType.GOAL) {
-                return new Position(targetRow, col);
-            }
-        }
-        return new Position(targetRow, board.getColumns() - 1);
-    }
-
-    private Player createPlayer(String type, String name, float x, float y) {
-        switch (type) {
-            case "Green": return new GreenPlayer(name, x, y);
-            case "Blue":  return new BluePlayer(name, x, y);
-            default:      return new RedPlayer(name, x, y);
-        }
-    }
-
-    // ═══════════════════════════════════════
+    // ══════════════════════════════════════════════
     //  PREPARAR ELEMENTOS
-    // ═══════════════════════════════════════
+    // ══════════════════════════════════════════════
 
+    /**
+     * Prepara los elementos de la interfaz de usuario.
+     */
     private void prepareElements() {
         drawPanel = new DrawPanel();
         drawPanel.setLayout(null);
         setContentPane(drawPanel);
 
-        // ── Botón MENU (sobre el HUD, izquierda) ──
         btnMenu = new JButton("MENU");
         btnMenu.setFont(new Font("Arial", Font.BOLD, 14));
         btnMenu.setForeground(Color.WHITE);
@@ -193,366 +202,295 @@ public class GamePanel extends JFrame {
         btnMenu.setBounds(5, 10, 110, 30);
         drawPanel.add(btnMenu);
 
-        // ── Popup menu ──
         popupMenu = new JPopupMenu();
-        JMenuItem itemSave = new JMenuItem("💾  Guardar partida");
-        JMenuItem itemLoad = new JMenuItem("📂  Abrir partida");
+        JMenuItem itemSave = new JMenuItem("Guardar partida");
+        JMenuItem itemLoad = new JMenuItem("Abrir partida");
+        JMenuItem itemQuit = new JMenuItem("Terminar partida");
         itemSave.setFont(new Font("Arial", Font.PLAIN, 14));
         itemLoad.setFont(new Font("Arial", Font.PLAIN, 14));
+        itemQuit.setFont(new Font("Arial", Font.PLAIN, 14));
         popupMenu.add(itemSave);
         popupMenu.add(itemLoad);
+        popupMenu.addSeparator();
+        popupMenu.add(itemQuit);
 
-        itemSave.addActionListener(new ActionListener() {
-            public void actionPerformed(ActionEvent e) { guardarPartida(); }
-        });
-        itemLoad.addActionListener(new ActionListener() {
-            public void actionPerformed(ActionEvent e) { abrirPartida(); }
-        });
-
-        btnMenu.addActionListener(new ActionListener() {
-            public void actionPerformed(ActionEvent e) {
-                popupMenu.show(btnMenu, 0, btnMenu.getHeight());
-            }
-        });
+        itemSave.addActionListener(e -> guardarPartida());
+        itemLoad.addActionListener(e -> abrirPartida());
+        itemQuit.addActionListener(e -> terminarPartida());
+        btnMenu.addActionListener(e -> popupMenu.show(btnMenu, 0, btnMenu.getHeight()));
     }
 
-    // ═══════════════════════════════════════
-    //  PREPARAR ACCIONES (teclado)
-    // ═══════════════════════════════════════
+    // ══════════════════════════════════════════════
+    //  PREPARAR ACCIONES
+    // ══════════════════════════════════════════════
 
+    /**
+     * Prepara las acciones del juego.
+     * Aca se enceuntran los controladores de teclado y mouse para el panel de dibujo, que es el foco principal.
+     * Controlador teclado movimineto jugadores y pausa, controlador mouse para mantener el foco en el panel al hacer click.
+     */
     private void prepareActions() {
         drawPanel.setFocusable(true);
-
+        drawPanel.addMouseListener(new MouseAdapter() {
+            @Override public void mouseClicked(MouseEvent e) { drawPanel.requestFocusInWindow(); }
+        });
         drawPanel.addKeyListener(new KeyAdapter() {
-            @Override
-            public void keyPressed(KeyEvent e) {
+            @Override public void keyPressed(KeyEvent e) {
                 int code = e.getKeyCode();
                 if (code < keys.length) {
-                    boolean wasPressed = keys[code];
+                    boolean was = keys[code];
                     keys[code] = true;
-
-                    // Mover inmediatamente al presionar por primera vez (sin esperar el intervalo)
-                    if (!wasPressed) {
-                        // Recalcular dirección completa con todas las teclas activas
-                        boolean up1    = keys[KeyEvent.VK_W] || (gameMode != GameMode.PLAYER_VS_PLAYER && keys[KeyEvent.VK_UP]);
-                        boolean down1  = keys[KeyEvent.VK_S] || (gameMode != GameMode.PLAYER_VS_PLAYER && keys[KeyEvent.VK_DOWN]);
-                        boolean left1  = keys[KeyEvent.VK_A] || (gameMode != GameMode.PLAYER_VS_PLAYER && keys[KeyEvent.VK_LEFT]);
-                        boolean right1 = keys[KeyEvent.VK_D] || (gameMode != GameMode.PLAYER_VS_PLAYER && keys[KeyEvent.VK_RIGHT]);
-                        Direction dir1 = resolveDirection(up1, down1, left1, right1);
-                        if (dir1 != null) game.movePlayer(0, dir1);
-
+                    if (!was) {
+                        boolean u = keys[KeyEvent.VK_W] || (gameMode != GameMode.PLAYER_VS_PLAYER && keys[KeyEvent.VK_UP]);
+                        boolean d = keys[KeyEvent.VK_S] || (gameMode != GameMode.PLAYER_VS_PLAYER && keys[KeyEvent.VK_DOWN]);
+                        boolean l = keys[KeyEvent.VK_A] || (gameMode != GameMode.PLAYER_VS_PLAYER && keys[KeyEvent.VK_LEFT]);
+                        boolean r = keys[KeyEvent.VK_D] || (gameMode != GameMode.PLAYER_VS_PLAYER && keys[KeyEvent.VK_RIGHT]);
+                        game.movePlayer(0, u, d, l, r);
                         if (gameMode.isMultiplayer()) {
-                            Direction dir2 = resolveDirection(
+                            game.movePlayer(1,
                                 keys[KeyEvent.VK_UP], keys[KeyEvent.VK_DOWN],
                                 keys[KeyEvent.VK_LEFT], keys[KeyEvent.VK_RIGHT]);
-                            if (dir2 != null) game.movePlayer(1, dir2);
                         }
                     }
                 }
-
-                if (code == KeyEvent.VK_ESCAPE || code == KeyEvent.VK_P) {
-                    togglePause();
-                }
+                if (code == KeyEvent.VK_ESCAPE || code == KeyEvent.VK_P) togglePause();
             }
-
-            @Override
-            public void keyReleased(KeyEvent e) {
+            @Override public void keyReleased(KeyEvent e) {
                 int code = e.getKeyCode();
                 if (code < keys.length) keys[code] = false;
             }
         });
-
         drawPanel.requestFocusInWindow();
     }
 
-    /**
-     * Obtiene la dirección de P1 según el modo:
-     * - PvP: solo WASD (flechas reservadas para P2)
-     * - Single Player / PvM: WASD + flechas
-     */
-    private Direction getDirectionP1(int code) {
-        boolean pvp = gameMode == GameMode.PLAYER_VS_PLAYER;
-        if (code == KeyEvent.VK_W) return Direction.UP;
-        if (code == KeyEvent.VK_S) return Direction.DOWN;
-        if (code == KeyEvent.VK_A) return Direction.LEFT;
-        if (code == KeyEvent.VK_D) return Direction.RIGHT;
-        // Flechas solo si NO es PvP
-        if (!pvp) {
-            if (code == KeyEvent.VK_UP)    return Direction.UP;
-            if (code == KeyEvent.VK_DOWN)  return Direction.DOWN;
-            if (code == KeyEvent.VK_LEFT)  return Direction.LEFT;
-            if (code == KeyEvent.VK_RIGHT) return Direction.RIGHT;
-        }
-        return null;
-    }
-
-    /**
-     * Obtiene la dirección de P2 (solo flechas, solo en modo multijugador).
-     */
-    private Direction getDirectionP2(int code) {
-        if (code == KeyEvent.VK_UP)    return Direction.UP;
-        if (code == KeyEvent.VK_DOWN)  return Direction.DOWN;
-        if (code == KeyEvent.VK_LEFT)  return Direction.LEFT;
-        if (code == KeyEvent.VK_RIGHT) return Direction.RIGHT;
-        return null;
-    }
-
-    // ═══════════════════════════════════════
+    // ══════════════════════════════════════════════
     //  GAME LOOP
-    // ═══════════════════════════════════════
+    // ══════════════════════════════════════════════
 
+    /**
+     * Inicia el bucle del juego.
+     */
     private void startGameLoop() {
-        gameLoop = new Timer(TICK_MS, new ActionListener() {
-            public void actionPerformed(ActionEvent e) {
-                // Input y movimiento del jugador cada tick (píxeles libres)
+        gameLoop = new Timer(TICK_MS, e -> {
+            if (game.isRunning()) {
+                game.tickPlayers();          // actualiza temporizadores internos (invencibilidad)
                 processInput();
-
-                // Movimiento de la máquina (PvM)
-                if (gameMode == GameMode.PLAYER_VS_MACHINE) {
-                    game.updateMachine();
-                }
-
-                // Movimiento de enemigos (cada ENEMY_MOVE_INTERVAL ticks)
-                enemyTickCounter++;
-                if (enemyTickCounter >= GameConfig.ENEMY_MOVE_INTERVAL) {
+                if (gameMode == GameMode.PLAYER_VS_MACHINE) game.updateMachine();
+                if (++enemyTickCounter >= Game.getEnemyMoveInterval()) {
                     game.moveEnemies();
                     enemyTickCounter = 0;
                 }
-
-                // Lógica: colisiones, timer, victoria
                 game.checkEnemyCollsion();
                 game.checkCoinCollision();
                 game.checkSpecialElements();
+                game.checkBombEnemyCollision();
                 game.checkPlayerCollisions();
                 game.checkGoal();
                 game.updateTimer();
-
                 checkGameOver();
-                drawPanel.repaint();
             }
+            drawPanel.repaint();
         });
         gameLoop.start();
     }
 
+    /**
+     * Procesa la entrada del usuario.
+     */
     private void processInput() {
-        // ── Player 1 ──
-        boolean up1    = keys[KeyEvent.VK_W] || (gameMode != GameMode.PLAYER_VS_PLAYER && keys[KeyEvent.VK_UP]);
-        boolean down1  = keys[KeyEvent.VK_S] || (gameMode != GameMode.PLAYER_VS_PLAYER && keys[KeyEvent.VK_DOWN]);
-        boolean left1  = keys[KeyEvent.VK_A] || (gameMode != GameMode.PLAYER_VS_PLAYER && keys[KeyEvent.VK_LEFT]);
-        boolean right1 = keys[KeyEvent.VK_D] || (gameMode != GameMode.PLAYER_VS_PLAYER && keys[KeyEvent.VK_RIGHT]);
-
-        Direction dir1 = resolveDirection(up1, down1, left1, right1);
-        if (dir1 != null) game.movePlayer(0, dir1);
-
-        // ── Player 2 — solo flechas ──
+        boolean u = keys[KeyEvent.VK_W] || (gameMode != GameMode.PLAYER_VS_PLAYER && keys[KeyEvent.VK_UP]);
+        boolean d = keys[KeyEvent.VK_S] || (gameMode != GameMode.PLAYER_VS_PLAYER && keys[KeyEvent.VK_DOWN]);
+        boolean l = keys[KeyEvent.VK_A] || (gameMode != GameMode.PLAYER_VS_PLAYER && keys[KeyEvent.VK_LEFT]);
+        boolean r = keys[KeyEvent.VK_D] || (gameMode != GameMode.PLAYER_VS_PLAYER && keys[KeyEvent.VK_RIGHT]);
+        game.movePlayer(0, u, d, l, r);
         if (gameMode.isMultiplayer()) {
-            boolean up2    = keys[KeyEvent.VK_UP];
-            boolean down2  = keys[KeyEvent.VK_DOWN];
-            boolean left2  = keys[KeyEvent.VK_LEFT];
-            boolean right2 = keys[KeyEvent.VK_RIGHT];
-
-            Direction dir2 = resolveDirection(up2, down2, left2, right2);
-            if (dir2 != null) game.movePlayer(1, dir2);
+            game.movePlayer(1,
+                keys[KeyEvent.VK_UP], keys[KeyEvent.VK_DOWN],
+                keys[KeyEvent.VK_LEFT], keys[KeyEvent.VK_RIGHT]);
         }
     }
 
     /**
-     * Resuelve la dirección a partir de las teclas presionadas,
-     * incluyendo las 8 diagonales.
+     * Alterna el estado de pausa del juego.
      */
-    private Direction resolveDirection(boolean up, boolean down, boolean left, boolean right) {
-        if (up   && right) return Direction.UP_RIGHT;
-        if (up   && left)  return Direction.UP_LEFT;
-        if (down && right) return Direction.DOWN_RIGHT;
-        if (down && left)  return Direction.DOWN_LEFT;
-        if (up)            return Direction.UP;
-        if (down)          return Direction.DOWN;
-        if (left)          return Direction.LEFT;
-        if (right)         return Direction.RIGHT;
-        return null;
-    }
-
     private void togglePause() {
-        if (game.getGameState() instanceof PausedState) {
-            game.resume();
-        } else {
-            game.pause();
-        }
+        if (game.isPaused()) game.resume(); else game.pause();
     }
 
+    /**
+     * Verifica si el juego ha terminado.
+     */
     private void checkGameOver() {
-        if (game.getGameState() instanceof GameOverState ||
-            game.getGameState() instanceof WinState) {
+        if (game.isGameOver() || game.isWin()) {
             gameLoop.stop();
-            showEndDialog();
+            SwingUtilities.invokeLater(this::showEndDialog);
         }
     }
 
-    private void guardarPartida() {
-        // Pausar mientras se guarda
-        boolean estabaCorriendo = game.getGameState() instanceof RunningState;
-        if (estabaCorriendo) game.pause();
+    // ══════════════════════════════════════════════
+    //  GUARDAR / ABRIR PARTIDA
+    // ══════════════════════════════════════════════
 
-        // Crear carpeta saves si no existe
+    /**
+     * Termina la partida actual.
+     */
+    private void terminarPartida() {
+        int confirm = JOptionPane.showConfirmDialog(this,
+                "¿Seguro que quieres terminar la partida actual?\nPerderás el progreso no guardado.",
+                "Terminar partida",
+                JOptionPane.YES_NO_OPTION,
+                JOptionPane.WARNING_MESSAGE);
+        if (confirm == JOptionPane.YES_OPTION) {
+            gameLoop.stop();
+            new ModeSelectionPanel();
+            dispose();
+        }
+    }
+
+    /**
+     * Guarda la partida actual.
+     */
+    private void guardarPartida() {
+        boolean running = game.isRunning();
+        if (running) game.pause();
         java.io.File savesDir = new java.io.File(SAVES_DIR);
         if (!savesDir.exists()) savesDir.mkdirs();
-
-        // Diálogo para elegir nombre del archivo
         JFileChooser chooser = new JFileChooser(savesDir);
         chooser.setDialogTitle("Guardar partida");
         chooser.setSelectedFile(new java.io.File("partida.dat"));
         chooser.setFileFilter(new javax.swing.filechooser.FileNameExtensionFilter(
                 "Archivos de guardado (*.dat)", "dat"));
-
-        int result = chooser.showSaveDialog(this);
-        if (result == JFileChooser.APPROVE_OPTION) {
+        if (chooser.showSaveDialog(this) == JFileChooser.APPROVE_OPTION) {
             String path = chooser.getSelectedFile().getAbsolutePath();
             if (!path.endsWith(".dat")) path += ".dat";
             try {
-                game.saveGame(path, levelFile);
-                JOptionPane.showMessageDialog(this,
-                        "Partida guardada correctamente.",
+                game.saveGame(path, game.getLevelFile());
+                JOptionPane.showMessageDialog(this, "Partida guardada correctamente.",
                         "Guardado", JOptionPane.INFORMATION_MESSAGE);
             } catch (GameException ex) {
-                JOptionPane.showMessageDialog(this,
-                        ex.getMessage(), "Error al guardar",
-                        JOptionPane.ERROR_MESSAGE);
+                JOptionPane.showMessageDialog(this, ex.getMessage(),
+                        "Error al guardar", JOptionPane.ERROR_MESSAGE);
             }
         }
-
-        if (estabaCorriendo) game.resume();
+        if (running) game.resume();
         drawPanel.requestFocusInWindow();
     }
 
+    /**
+     * Abre una partida guardada.
+     */
     private void abrirPartida() {
-        boolean estabaCorriendo = game.getGameState() instanceof RunningState;
-        if (estabaCorriendo) game.pause();
-
+        boolean running = game.isRunning();
+        if (running) game.pause();
         java.io.File savesDir = new java.io.File(SAVES_DIR);
         if (!savesDir.exists()) savesDir.mkdirs();
-
         JFileChooser chooser = new JFileChooser(savesDir);
         chooser.setDialogTitle("Abrir partida guardada");
         chooser.setFileFilter(new javax.swing.filechooser.FileNameExtensionFilter(
                 "Archivos de guardado (*.dat)", "dat"));
-
-        int result = chooser.showOpenDialog(this);
-        if (result == JFileChooser.APPROVE_OPTION) {
+        if (chooser.showOpenDialog(this) == JFileChooser.APPROVE_OPTION) {
             String path = chooser.getSelectedFile().getAbsolutePath();
             try {
-                GameSave save = Game.loadGame(path);
-                // Restaurar: abrir nuevo GamePanel con los datos del save
+                Game restored = Game.createFromSave(path);
                 gameLoop.stop();
-                GamePanel restored = new GamePanel(
-                        save.getGameMode(),
-                        save.getPlayerSnapshots().get(0).getType(),
-                        save.getPlayerSnapshots().size() > 1 ? save.getPlayerSnapshots().get(1).getType() : null,
-                        machineType,
-                        save.getLevelFile());
-                restored.restoreFromSave(save);
+                new GamePanel(restored);
                 dispose();
             } catch (GameException ex) {
-                JOptionPane.showMessageDialog(this,
-                        ex.getMessage(), "Error al cargar",
-                        JOptionPane.ERROR_MESSAGE);
-                if (estabaCorriendo) game.resume();
+                JOptionPane.showMessageDialog(this, ex.getMessage(),
+                        "Error al cargar", JOptionPane.ERROR_MESSAGE);
+                if (running) game.resume();
                 drawPanel.requestFocusInWindow();
             }
         } else {
-            if (estabaCorriendo) game.resume();
+            if (running) game.resume();
             drawPanel.requestFocusInWindow();
         }
     }
 
+    // ══════════════════════════════════════════════
+    //  FIN DE PARTIDA
+    // ══════════════════════════════════════════════
+
     /**
-     * Aplica el estado de un GameSave sobre este GamePanel recién creado:
-     * restaura tiempo restante, posiciones, muertes, monedas recogidas.
+     * Muestra el diálogo de finalización del juego.
      */
-    public void restoreFromSave(GameSave save) {
-        // Tiempo restante
-        game.setRemainingTime(save.getRemainingTime());
-
-        // Jugadores
-        List<GameSave.PlayerSnapshot> snapshots = save.getPlayerSnapshots();
-        List<Player> players = game.getPlayers();
-        for (int i = 0; i < Math.min(snapshots.size(), players.size()); i++) {
-            GameSave.PlayerSnapshot snap = snapshots.get(i);
-            players.get(i).setX(snap.getCol() * GameConfig.CELL_SIZE);
-            players.get(i).setY(snap.getRow() * GameConfig.CELL_SIZE);
-            players.get(i).setDeaths(snap.getDeaths());
-            players.get(i).setCollectedCoins(snap.getCollectedCoins());
-        }
-
-        // Marcar monedas como recogidas
-        for (int[] pos : save.getCollectedCoinPositions()) {
-            for (Coin c : game.getCurrentLevel().getCoins()) {
-                if (c.getPosition().getRow() == pos[0] &&
-                    c.getPosition().getColumn() == pos[1]) {
-                    c.collect();
-                    break;
-                }
-            }
-        }
-
-        // Marcar elementos especiales como consumidos
-        for (int[] pos : save.getConsumedElementPositions()) {
-            for (SpecialElement el : game.getCurrentLevel().getSpecialElements()) {
-                if (el.getPosition().getRow() == pos[0] &&
-                    el.getPosition().getColumn() == pos[1]) {
-                    el.consume();
-                    break;
-                }
-            }
-        }
-    }
-
     private void showEndDialog() {
-        boolean won = game.getGameState() instanceof WinState;
+        boolean won = game.isWin();
         String msg;
-
         if (gameMode == GameMode.PLAYER_VS_PLAYER && won) {
-            // Determinar ganador por monedas recogidas
-            List<Player> players = game.getPlayers();
-            int coins1 = players.size() > 0 ? players.get(0).getCollectedCoins() : 0;
-            int coins2 = players.size() > 1 ? players.get(1).getCollectedCoins() : 0;
-
-            if (coins1 > coins2) {
-                msg = "¡PLAYER 1 GANA!\nMonedas — P1: " + coins1 + "  P2: " + coins2;
-            } else if (coins2 > coins1) {
-                msg = "¡PLAYER 2 GANA!\nMonedas — P1: " + coins1 + "  P2: " + coins2;
-            } else {
-                msg = "¡EMPATE!\nAmbos recogieron " + coins1 + " monedas.";
-            }
+            int c1 = game.getPlayerCount() > 0 ? game.getPlayerCoins(0) : 0;
+            int c2 = game.getPlayerCount() > 1 ? game.getPlayerCoins(1) : 0;
+            if      (c1 > c2) msg = "¡PLAYER 1 GANA!\nMonedas — P1: " + c1 + "  P2: " + c2;
+            else if (c2 > c1) msg = "¡PLAYER 2 GANA!\nMonedas — P1: " + c1 + "  P2: " + c2;
+            else              msg = "¡EMPATE!\nAmbos recogieron " + c1 + " monedas.";
         } else if (won) {
             msg = "¡Nivel completado!";
         } else {
             msg = "Se acabó el tiempo. ¡Inténtalo de nuevo!";
         }
 
-        int option = JOptionPane.showOptionDialog(this, msg, "Fin del juego",
-                JOptionPane.DEFAULT_OPTION, JOptionPane.INFORMATION_MESSAGE,
-                null, new String[]{"Reintentar", "Menú principal"}, "Reintentar");
+        String nextLevel = getNextLevelFile();
+        String[] options = (won && nextLevel != null)
+                ? new String[]{"Siguiente nivel", "Reintentar", "Menú principal"}
+                : new String[]{"Reintentar", "Menú principal"};
 
-        if (option == 0) {
-            new GamePanel(gameMode, playerType, player2Type, machineType, levelFile);
+        int opt = JOptionPane.showOptionDialog(this, msg, "Fin del juego",
+                JOptionPane.DEFAULT_OPTION, JOptionPane.INFORMATION_MESSAGE,
+                null, options, options[0]);
+
+        String p1Type   = game.getPlayerCount() > 0 ? game.getPlayerType(0) : "Red";
+        Color  p1Border = game.getPlayerCount() > 0 ? game.getPlayerBorderColor(0) : Color.WHITE;
+        String p2Type   = (game.getPlayerCount() > 1 && !game.isPlayerMachine(1))
+                          ? game.getPlayerType(1) : null;
+        Color  p2Border = (game.getPlayerCount() > 1 && !game.isPlayerMachine(1))
+                          ? game.getPlayerBorderColor(1) : null;
+        String curLevel = game.getLevelFile();
+
+        if (won && nextLevel != null) {
+            if      (opt == 0) new GamePanel(gameMode, p1Type, p1Border, p2Type, p2Border, machineType, nextLevel);
+            else if (opt == 1) new GamePanel(gameMode, p1Type, p1Border, p2Type, p2Border, machineType, curLevel);
+            else               new ModeSelectionPanel();
         } else {
-            new ModeSelectionPanel();
+            if (opt == 0) new GamePanel(gameMode, p1Type, p1Border, p2Type, p2Border, machineType, curLevel);
+            else          new ModeSelectionPanel();
         }
         dispose();
     }
 
-    // ═══════════════════════════════════════
-    //  PANEL DE DIBUJO
-    // ═══════════════════════════════════════
+    /**
+     * Obtiene el archivo del siguiente nivel.
+     * @return El nombre del archivo del siguiente nivel, o null si no hay más niveles.
+     */
+    private String getNextLevelFile() {
+        java.io.File folder = new java.io.File("recursos");
+        java.io.File[] txts = folder.listFiles((d, n) -> n.matches("nivel\\d+\\.txt"));
+        if (txts == null) return null;
+        java.util.Arrays.sort(txts, (a, b) -> {
+            int na = Integer.parseInt(a.getName().replaceAll("[^0-9]", ""));
+            int nb = Integer.parseInt(b.getName().replaceAll("[^0-9]", ""));
+            return Integer.compare(na, nb);
+        });
+        String cur = game.getLevelFile();
+        for (int i = 0; i < txts.length - 1; i++)
+            if (("recursos/" + txts[i].getName()).equals(cur))
+                return "recursos/" + txts[i + 1].getName();
+        return null;
+    }
 
+    // ══════════════════════════════════════════════
+    //  PANEL DE DIBUJO
+    // ══════════════════════════════════════════════
+
+    /**
+     * Panel de dibujo del juego.
+     */
     private class DrawPanel extends JPanel {
 
-        @Override
-        protected void paintComponent(Graphics g) {
+        @Override protected void paintComponent(Graphics g) {
             super.paintComponent(g);
             Graphics2D g2 = (Graphics2D) g;
-            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-
+            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING,
+                                RenderingHints.VALUE_ANTIALIAS_ON);
             drawBackground(g2);
             drawHUD(g2);
             drawBoard(g2);
@@ -560,205 +498,197 @@ public class GamePanel extends JFrame {
             drawSpecialElements(g2);
             drawEnemies(g2);
             drawPlayers(g2);
-
-            if (game.getGameState() instanceof PausedState) {
-                drawPauseOverlay(g2);
-            }
+            if (game.isPaused()) drawPauseOverlay(g2);
         }
 
-        // ── Fondo azul ──
         private void drawBackground(Graphics2D g2) {
             g2.setColor(COLOR_BG);
             g2.fillRect(0, HUD_H, WINDOW_W, WINDOW_H - HUD_H);
         }
 
-        // ── HUD ──
         private void drawHUD(Graphics2D g2) {
             g2.setColor(COLOR_HUD_BG);
             g2.fillRect(0, 0, WINDOW_W, HUD_H);
-
             g2.setColor(COLOR_HUD_TEXT);
+
+            // Monedas (centro)
             g2.setFont(new Font("Arial", Font.BOLD, 18));
             FontMetrics fm = g2.getFontMetrics();
+            int collected = game.getPlayerCount() == 0 ? 0 : game.getPlayerCoins(0);
+            String coins  = collected + "/" + totalCoins;
+            g2.drawString(coins, (WINDOW_W - fm.stringWidth(coins)) / 2, 22);
 
-            // Monedas recogidas / total (centro)
-            int collected = game.getPlayers().isEmpty() ? 0
-                    : game.getPlayers().get(0).getCollectedCoins();
-            String coinsText = collected + "/" + totalCoins;
-            g2.drawString(coinsText, (WINDOW_W - fm.stringWidth(coinsText)) / 2, 22);
-
-            // Tiempo restante en MM:SS (centro-abajo)
-            int totalSecs = game.getRemainingTime() / GameConfig.FPS;
-            int mins = totalSecs / 60;
-            int secs = totalSecs % 60;
-            String timeText = String.format("%d:%02d", mins, secs);
+            // Tiempo (centro-abajo)
             g2.setFont(new Font("Arial", Font.BOLD, 14));
-            FontMetrics fmSmall = g2.getFontMetrics();
-            g2.drawString(timeText, (WINDOW_W - fmSmall.stringWidth(timeText)) / 2, 42);
+            FontMetrics fmS = g2.getFontMetrics();
+            int secs = game.getRemainingTime() / Game.getFps();
+            String time = String.format("%d:%02d", secs / 60, secs % 60);
+            g2.drawString(time, (WINDOW_W - fmS.stringWidth(time)) / 2, 42);
 
             // DEATHS (derecha)
             g2.setFont(new Font("Arial", Font.BOLD, 18));
-            int deaths = game.getPlayers().isEmpty() ? 0
-                    : game.getPlayers().get(0).getDeaths();
-            String deathsText = "DEATHS: " + deaths;
-            g2.drawString(deathsText, WINDOW_W - fm.stringWidth(deathsText) - 15, 32);
+            int deaths = game.getPlayerCount() == 0 ? 0 : game.getPlayerDeaths(0);
+            String deathsTxt = "DEATHS: " + deaths;
+            g2.drawString(deathsTxt, WINDOW_W - fm.stringWidth(deathsTxt) - 15, 32);
         }
 
-        // ── Tablero ──
         private void drawBoard(Graphics2D g2) {
-            GameBoard board = game.getCurrentLevel().getBoard();
-            Cell[][] cells  = board.getCells();
-
-            for (int row = 0; row < board.getRows(); row++) {
-                for (int col = 0; col < board.getColumns(); col++) {
+            int rows = game.getBoardRows(), cols = game.getBoardColumns();
+            for (int row = 0; row < rows; row++) {
+                for (int col = 0; col < cols; col++) {
                     int px = boardOffsetX + col * CELL;
                     int py = boardOffsetY + row * CELL;
-                    Cell cell = cells[row][col];
-
-                    switch (cell.getType()) {
-                        case SPAWN_ZONE:
-                            g2.setColor(COLOR_SPAWN);
-                            g2.fillRect(px, py, CELL, CELL);
-                            g2.setColor(COLOR_BORDER);
-                            g2.drawRect(px, py, CELL, CELL);
-                            break;
-
-                        case GOAL:
-                            g2.setColor(COLOR_GOAL);
-                            g2.fillRect(px, py, CELL, CELL);
-                            g2.setColor(COLOR_BORDER);
-                            g2.drawRect(px, py, CELL, CELL);
-                            break;
-
-                        case WALKABLE:
-                        case SAFE_ZONE: {
-                            // Patrón ajedrezado
-                            Color chess = ((row + col) % 2 == 0)
-                                    ? COLOR_WALKABLE_A : COLOR_WALKABLE_B;
-                            g2.setColor(chess);
-                            g2.fillRect(px, py, CELL, CELL);
-                            g2.setColor(COLOR_BORDER);
-                            g2.drawRect(px, py, CELL, CELL);
-                            break;
+                    switch (game.getCellType(row, col)) {
+                        case "SPAWN_ZONE":
+                            g2.setColor(COLOR_SPAWN); g2.fillRect(px, py, CELL, CELL);
+                            g2.setColor(COLOR_BORDER); g2.drawRect(px, py, CELL, CELL); break;
+                        case "GOAL":
+                            g2.setColor(COLOR_GOAL); g2.fillRect(px, py, CELL, CELL);
+                            g2.setColor(COLOR_BORDER); g2.drawRect(px, py, CELL, CELL); break;
+                        case "SAFE_ZONE":
+                            // Zona segura intermedia ('Z') — verde suave, distinto de spawn/goal
+                            g2.setColor(COLOR_SAFE); g2.fillRect(px, py, CELL, CELL);
+                            g2.setColor(COLOR_BORDER); g2.drawRect(px, py, CELL, CELL); break;
+                        case "WALKABLE": {
+                            Color chess = ((row + col) % 2 == 0) ? COLOR_WALKABLE_A : COLOR_WALKABLE_B;
+                            g2.setColor(chess); g2.fillRect(px, py, CELL, CELL);
+                            g2.setColor(COLOR_BORDER); g2.drawRect(px, py, CELL, CELL); break;
                         }
-
-                        case WALL:
-                        case EMPTY:
                         default:
-                            // Fondo azul, sin borde
-                            g2.setColor(COLOR_BG);
-                            g2.fillRect(px, py, CELL, CELL);
-                            break;
+                            g2.setColor(COLOR_BG); g2.fillRect(px, py, CELL, CELL); break;
                     }
                 }
             }
-
-            // Borde exterior del tablero completo
-            int boardW = board.getColumns() * CELL;
-            int boardH = board.getRows()    * CELL;
             g2.setColor(COLOR_BORDER);
             g2.setStroke(new BasicStroke(2f));
-            g2.drawRect(boardOffsetX, boardOffsetY, boardW, boardH);
+            g2.drawRect(boardOffsetX, boardOffsetY, cols * CELL, rows * CELL);
         }
 
-        // ── Monedas ──
         private void drawCoins(Graphics2D g2) {
-            List<Coin> coins = game.getCurrentLevel().getCoins();
-            for (Coin coin : coins) {
-                if (coin.isCollected()) continue;
-                int px = boardOffsetX + coin.getPosition().getColumn() * CELL + CELL / 2;
-                int py = boardOffsetY + coin.getPosition().getRow()    * CELL + CELL / 2;
+            for (int i = 0; i < game.getCoinCount(); i++) {
+                if (game.isCoinCollected(i)) continue;
+                int px = boardOffsetX + game.getCoinCol(i) * CELL + CELL / 2;
+                int py = boardOffsetY + game.getCoinRow(i) * CELL + CELL / 2;
                 int r  = CELL / 4;
 
-                if (coin instanceof SkinCoin) {
-                    g2.setColor(new Color(255, 140, 0)); // naranja
+                if (game.isCoinSkin(i) && imgSkinCoin != null) {
+                    int size = r * 2 + 2;
+                    g2.drawImage(imgSkinCoin, px - r - 1, py - r - 1, size, size, null);
                 } else {
-                    g2.setColor(new Color(255, 215, 0)); // dorado
+                    g2.setColor(new Color(255, 215, 0));
+                    g2.fillOval(px - r, py - r, r * 2, r * 2);
+                    g2.setColor(COLOR_BORDER);
+                    g2.drawOval(px - r, py - r, r * 2, r * 2);
                 }
-                g2.fillOval(px - r, py - r, r * 2, r * 2);
-                g2.setColor(COLOR_BORDER);
-                g2.drawOval(px - r, py - r, r * 2, r * 2);
             }
         }
 
-        // ── Elementos especiales ──
         private void drawSpecialElements(Graphics2D g2) {
-            List<SpecialElement> elements = game.getCurrentLevel().getSpecialElements();
-            for (SpecialElement el : elements) {
-                if (!el.isActive()) continue;
-                int px = boardOffsetX + el.getPosition().getColumn() * CELL + CELL / 2;
-                int py = boardOffsetY + el.getPosition().getRow()    * CELL + CELL / 2;
+            int imgSize = CELL - 2;
+
+            for (int i = 0; i < game.getSpecialElementCount(); i++) {
+                if (!game.isSpecialElementActive(i)) continue;
+
+                int cellX = boardOffsetX + game.getSpecialElementCol(i) * CELL;
+                int cellY = boardOffsetY + game.getSpecialElementRow(i) * CELL;
+                int cx = cellX + CELL / 2;
+                int cy = cellY + CELL / 2;
                 int r  = CELL / 3;
 
-                if (el instanceof Bomb) {
-                    g2.setColor(Color.DARK_GRAY);
-                    g2.fillOval(px - r, py - r, r * 2, r * 2);
-                    g2.setColor(Color.RED);
-                    g2.setFont(new Font("Arial", Font.BOLD, 10));
-                    g2.drawString("B", px - 4, py + 4);
-                } else if (el instanceof LifeSource) {
-                    g2.setColor(new Color(255, 80, 80));
-                    g2.setFont(new Font("Arial", Font.BOLD, 14));
-                    g2.drawString("♥", px - 7, py + 5);
+                if (game.isSpecialElementBomb(i)) {
+                    if (imgBomb != null) {
+                        g2.drawImage(imgBomb,
+                                cellX + (CELL - imgSize) / 2,
+                                cellY + (CELL - imgSize) / 2,
+                                imgSize, imgSize, null);
+                    } else {
+                        g2.setColor(Color.DARK_GRAY); g2.fillOval(cx-r, cy-r, r*2, r*2);
+                        g2.setColor(Color.RED);
+                        g2.setFont(new Font("Arial", Font.BOLD, 10));
+                        g2.drawString("B", cx-4, cy+4);
+                    }
+                } else if (game.isSpecialElementLifeSource(i)) {
+                    if (imgLifeSource != null) {
+                        g2.drawImage(imgLifeSource,
+                                cellX + (CELL - imgSize) / 2,
+                                cellY + (CELL - imgSize) / 2,
+                                imgSize, imgSize, null);
+                    } else {
+                        g2.setColor(new Color(255, 80, 80));
+                        g2.setFont(new Font("Arial", Font.BOLD, 14));
+                        g2.drawString("♥", cx-7, cy+5);
+                    }
                 }
             }
         }
 
-        // ── Enemigos: círculos azul oscuro ──
         private void drawEnemies(Graphics2D g2) {
-            List<Enemy> enemies = game.getCurrentLevel().getEnemies();
-            for (Enemy enemy : enemies) {
-                if (!enemy.isActive()) continue;
-                int px = Math.round(enemy.getX() + enemy.getSize() / 2f) + boardOffsetX;
-                int py = Math.round(enemy.getY() + enemy.getSize() / 2f) + boardOffsetY;
-                int r  = Math.round(enemy.getSize() / 2f);
-
-                g2.setColor(COLOR_ENEMY);
-                g2.fillOval(px - r, py - r, r * 2, r * 2);
-                g2.setColor(Color.BLACK);
-                g2.setStroke(new BasicStroke(1.5f));
-                g2.drawOval(px - r, py - r, r * 2, r * 2);
+            for (int i = 0; i < game.getEnemyCount(); i++) {
+                if (!game.isEnemyActive(i)) continue;
+                int px = Math.round(game.getEnemyX(i) + game.getEnemySize(i) / 2f) + boardOffsetX;
+                int py = Math.round(game.getEnemyY(i) + game.getEnemySize(i) / 2f) + boardOffsetY;
+                int r  = Math.round(game.getEnemySize(i) / 2f);
+                g2.setColor(COLOR_ENEMY); g2.fillOval(px-r, py-r, r*2, r*2);
+                g2.setColor(Color.BLACK); g2.setStroke(new BasicStroke(1.5f));
+                g2.drawOval(px-r, py-r, r*2, r*2);
             }
         }
 
-        // ── Jugadores: círculos de color con borde negro ──
+        /**
+         * Dibuja los jugadores con su color de cuerpo y su borde personalizado.
+         * El número fue reemplazado por el borde de color como diferenciador.
+         */
         private void drawPlayers(Graphics2D g2) {
-            List<Player> players = game.getPlayers();
-            for (int i = 0; i < players.size(); i++) {
-                Player p  = players.get(i);
-                int cx    = Math.round(p.getX() + p.getSize() / 2f) + boardOffsetX;
-                int cy    = Math.round(p.getY() + p.getSize() / 2f) + boardOffsetY;
-                int r     = Math.round(p.getSize() / 2f);
+            for (int i = 0; i < game.getPlayerCount(); i++) {
+                float px = game.getPlayerX(i);
+                float py = game.getPlayerY(i);
+                float sz = game.getPlayerSize(i);
+                int cx   = Math.round(px + sz / 2f) + boardOffsetX;
+                int cy   = Math.round(py + sz / 2f) + boardOffsetY;
+                int r    = Math.round(sz / 2f);
 
-                Color color = (i == 0) ? getPlayerColor() : COLOR_PLAYER_2;
+                boolean invincible   = game.isPlayerInvincible(i);
+                boolean shieldActive = game.isPlayerShieldActive(i);
+
+                // Flash durante invencibilidad: saltar frames pares de 80ms
+                if (invincible && (System.currentTimeMillis() / 80) % 2 == 0) continue;
+
+                Composite original = g2.getComposite();
 
                 // Sombra
                 g2.setColor(new Color(0, 0, 0, 60));
                 g2.fillOval(cx - r + 2, cy - r + 2, r * 2, r * 2);
 
                 // Cuerpo
-                g2.setColor(color);
+                g2.setColor(getBodyColor(i));
                 g2.fillOval(cx - r, cy - r, r * 2, r * 2);
 
-                // Brillo superior
+                // Brillo
                 g2.setColor(new Color(255, 255, 255, 80));
                 g2.fillOval(cx - r + 2, cy - r + 2, r, r / 2);
 
-                // Borde
-                g2.setColor(Color.BLACK);
-                g2.setStroke(new BasicStroke(2f));
+                // Indicador de escudo para GreenPlayer
+                if ("Green".equals(game.getPlayerType(i))) {
+                    if (shieldActive) {
+                        // Anillo verde brillante = escudo disponible
+                        g2.setColor(new Color(60, 255, 100, 180));
+                        g2.setStroke(new BasicStroke(2.5f));
+                        g2.drawOval(cx - r - 3, cy - r - 3, (r + 3) * 2, (r + 3) * 2);
+                    }
+                    // Si el escudo se consumió, no se dibuja el anillo (sin necesidad de else)
+                }
+
+                // Borde personalizado del jugador
+                Color borderColor = game.getPlayerBorderColor(i);
+                if (borderColor == null) borderColor = Color.WHITE;
+                g2.setColor(borderColor);
+                g2.setStroke(new BasicStroke(3.5f));
                 g2.drawOval(cx - r, cy - r, r * 2, r * 2);
 
-                // Número de jugador encima
-                g2.setColor(Color.WHITE);
-                g2.setFont(new Font("Arial", Font.BOLD, r));
-                FontMetrics fm = g2.getFontMetrics();
-                String label = String.valueOf(i + 1);
-                g2.drawString(label, cx - fm.stringWidth(label) / 2, cy + fm.getAscent() / 2 - 1);
+                g2.setComposite(original);
             }
         }
 
-        // ── Overlay de pausa ──
         private void drawPauseOverlay(Graphics2D g2) {
             g2.setColor(new Color(0, 0, 0, 120));
             g2.fillRect(0, HUD_H, WINDOW_W, WINDOW_H - HUD_H);
@@ -767,33 +697,32 @@ public class GamePanel extends JFrame {
             String txt = "PAUSED";
             FontMetrics fm = g2.getFontMetrics();
             g2.drawString(txt, (WINDOW_W - fm.stringWidth(txt)) / 2,
-                    HUD_H + (WINDOW_H - HUD_H) / 2);
+                          HUD_H + (WINDOW_H - HUD_H) / 2);
             g2.setFont(new Font("Arial", Font.PLAIN, 16));
             String sub = "Presiona P o ESC para continuar";
             FontMetrics fm2 = g2.getFontMetrics();
             g2.drawString(sub, (WINDOW_W - fm2.stringWidth(sub)) / 2,
-                    HUD_H + (WINDOW_H - HUD_H) / 2 + 40);
+                          HUD_H + (WINDOW_H - HUD_H) / 2 + 40);
         }
     }
 
-    // ═══════════════════════════════════════
+    // ══════════════════════════════════════════════
     //  UTILIDADES
-    // ═══════════════════════════════════════
+    // ══════════════════════════════════════════════
 
-    private Color getPlayerColor() {
-        switch (playerType) {
+    /** Color del cuerpo según el tipo de skin. */
+    private Color getBodyColor(int playerIndex) {
+        if (game.getPlayerCount() == 0) return COLOR_PLAYER_1;
+        switch (game.getPlayerType(playerIndex)) {
             case "Green": return new Color(40, 170, 60);
             case "Blue":  return new Color(40, 100, 220);
             default:      return COLOR_PLAYER_1;
         }
     }
 
-    // ═══════════════════════════════════════
-    //  MAIN (prueba independiente)
-    // ═══════════════════════════════════════
-
     public static void main(String[] args) {
         SwingUtilities.invokeLater(() ->
-                new GamePanel(GameMode.SINGLE_PLAYER, "Red", null, null, "recursos/nivel1.txt"));
+                new GamePanel(GameMode.SINGLE_PLAYER, "Red", Color.WHITE,
+                              null, null, null, "recursos/nivel1.txt"));
     }
 }

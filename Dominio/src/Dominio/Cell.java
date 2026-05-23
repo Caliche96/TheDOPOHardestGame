@@ -1,32 +1,35 @@
 package Dominio;
 
 public class Cell {
+
     private Position position;
     private CellType type;
 
     /**
      * Constructor de la clase Cell
-     * 
+     *
      * @param position Posición de la celda
      * @param type     Tipo de celda
      */
     public Cell(Position position, CellType type) {
         this.position = position;
-        this.type = type;
+        this.type     = type;
     }
 
     /**
-     * Verifica si la celda es transitable
-     * 
+     * Verifica si la celda es transitable.
+     * EMPTY se excluye explícitamente porque representa celdas sin asignar
+     * (fondo azul) que visualmente no son caminables.
+     *
      * @return true si la celda es transitable, false en caso contrario
      */
     public boolean isWalkable() {
-        return type != CellType.WALL;
+        return type != CellType.WALL && type != CellType.EMPTY;
     }
 
     /**
      * Verifica si la celda es un muro
-     * 
+     *
      * @return true si la celda es un muro, false en caso contrario
      */
     public boolean isWall() {
@@ -35,7 +38,7 @@ public class Cell {
 
     /**
      * Verifica si la celda es una meta
-     * 
+     *
      * @return true si la celda es una meta, false en caso contrario
      */
     public boolean isGoal() {
@@ -44,7 +47,7 @@ public class Cell {
 
     /**
      * Verifica si la celda es una zona segura
-     * 
+     *
      * @return true si la celda es una zona segura, false en caso contrario
      */
     public boolean isSafeZone() {
@@ -53,7 +56,7 @@ public class Cell {
 
     /**
      * Verifica si la celda es una zona de spawn
-     * 
+     *
      * @return true si la celda es una zona de spawn, false en caso contrario
      */
     public boolean isSpawnZone() {
@@ -62,7 +65,7 @@ public class Cell {
 
     /**
      * Obtiene la posición de la celda
-     * 
+     *
      * @return Posición de la celda
      */
     public Position getPosition() {
@@ -71,7 +74,7 @@ public class Cell {
 
     /**
      * Obtiene el tipo de la celda
-     * 
+     *
      * @return Tipo de la celda
      */
     public CellType getType() {
@@ -80,7 +83,7 @@ public class Cell {
 
     /**
      * Establece el tipo de la celda
-     * 
+     *
      * @param type Nuevo tipo de la celda
      */
     public void setType(CellType type) {
